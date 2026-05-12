@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gestão Batismo — Campo de Chapecó</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231D4ED8'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-weight='800' font-family='sans-serif'>B</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#0B1120;--surface:#111B2E;--card:#162038;--card-hover:#1C2A4A;
+  --border:#1E3054;--border-light:#2A4070;
+  --accent:#3B82F6;--accent-hover:#2563EB;--accent-soft:rgba(59,130,246,.12);
+  --gold:#F59E0B;--gold-soft:rgba(245,158,11,.12);
+  --green:#10B981;--green-soft:rgba(16,185,129,.12);
+  --red:#EF4444;--red-soft:rgba(239,68,68,.12);
+  --purple:#8B5CF6;--purple-soft:rgba(139,92,246,.12);
+  --cyan:#06B6D4;
+  --t1:#E8EDF5;--t2:#8896B0;--t3:#5A6A84;
+  --font:'Outfit',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:3px}
+a{color:var(--accent);text-decoration:none}
+
+/* ── Components ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;transition:all .2s}
+.card.clickable:hover{background:var(--card-hover);cursor:pointer}
+.btn{padding:10px 20px;border-radius:8px;border:none;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px;letter-spacing:.3px}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-hover)}
+.btn-s{background:transparent;color:var(--accent);border:1px solid var(--border)}.btn-s:hover{background:var(--accent-soft)}
+.btn-ok{background:var(--green);color:#fff}.btn-ok:hover{background:#059669}
+.btn-no{background:var(--red);color:#fff}.btn-no:hover{background:#DC2626}
+.btn-g{background:transparent;color:var(--t2)}.btn-g:hover{background:var(--accent-soft);color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-full{width:100%;justify-content:center}
+.field{display:flex;flex-direction:column;gap:4px}
+.fl{font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.5px;text-transform:uppercase}
+.fl .req{color:var(--red)}
+.fi,.fs{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--t1);font-size:14px;font-family:var(--font);outline:none;transition:border-color .2s;width:100%}
+.fi:focus,.fs:focus{border-color:var(--accent)}.fi.err{border-color:var(--red)}
+.fe{font-size:11px;color:var(--red);min-height:14px}
+.fs{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238896B0' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.b-pen{color:var(--gold);background:var(--gold-soft)}
+.b-con{color:var(--green);background:var(--green-soft)}
+.b-bat{color:var(--accent);background:var(--accent-soft)}
+.b-role-admin{color:var(--purple);background:var(--purple-soft)}
+.b-role-rec{color:var(--cyan);background:rgba(6,182,212,.12)}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.flex-col{display:flex;flex-direction:column}.gap-14{gap:14px}.gap-16{gap:16px}
+.mt-12{margin-top:12px}.mt-16{margin-top:16px}.mt-20{margin-top:20px}.mt-24{margin-top:24px}
+.mb-16{margin-bottom:16px}.mb-24{margin-bottom:24px}.mb-28{margin-bottom:28px}
+.tc{text-align:center}
+.divider{height:1px;background:var(--border);margin:24px 0}
+
+.stat-card{display:flex;align-items:center;gap:16px;padding:20px 24px}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.stat-v{font-size:28px;font-weight:700;line-height:1}
+.stat-l{font-size:12px;color:var(--t2);margin-top:4px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+
+.stag{font-size:11px;text-transform:uppercase;letter-spacing:3px;font-weight:700;margin-bottom:4px}
+.stitle{font-size:26px;font-weight:700;margin:0}
+.sdesc{color:var(--t2);margin-top:8px;font-size:14px}
+
+.step-n{width:24px;height:24px;border-radius:6px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.step-h{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:16px}
+
+.di{background:var(--surface);border-radius:8px;padding:12px 14px}
+.di-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.di-v{font-size:14px;color:var(--t1);font-weight:500;margin-top:4px}
+
+.info-box{background:var(--accent-soft);border-radius:8px;padding:14px;display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--accent);line-height:1.5}
+.alert-w{padding:10px 14px;background:var(--gold-soft);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gold);font-weight:600}
+
+.table{width:100%;border-collapse:separate;border-spacing:0 4px}
+.table th{text-align:left;padding:8px 12px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;font-weight:700;border-bottom:1px solid var(--border)}
+.table td{padding:10px 12px;font-size:13px;color:var(--t2)}
+.table tr.dr{cursor:pointer;transition:background .15s}
+.table tr.dr:hover{background:var(--card-hover)}
+.td-nm{font-size:14px;color:var(--t1)!important;font-weight:500}
+.td-cd{color:var(--accent)!important;font-weight:700;font-family:'Courier New',monospace;letter-spacing:2px}
+
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.filters .field{flex:1;min-width:160px}.filters .field:first-child{flex:2;min-width:200px}
+
+.ck-w{display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer}
+.ck{width:20px;height:20px;border-radius:4px;border:2px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;transition:all .2s;cursor:pointer;flex-shrink:0}
+.ck.on{border-color:var(--accent);background:var(--accent)}
+
+.code-box{background:var(--surface);border:2px dashed var(--accent);border-radius:12px;padding:24px;text-align:center}
+.code-v{font-size:42px;font-weight:800;color:var(--accent);letter-spacing:8px;font-family:'Courier New',monospace}
+
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.conn-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.conn-dot.off{background:var(--red)}
+.conn-dot.demo{background:var(--gold)}
+
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .4s ease-out}
+
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{max-width:480px;width:100%;max-height:90vh;overflow-y:auto}
+
+.nav{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#3B82F6,#1D4ED8);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff;flex-shrink:0}
+.nav-tabs{display:flex;gap:4px}
+.nav-tab{padding:8px 16px;border-radius:8px;border:none;background:transparent;color:var(--t2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px}
+.nav-tab.active{background:var(--accent-soft);color:var(--accent)}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,.04)}
+
+.view{display:none}.view.active{display:block}
+
+.log-item{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.log-item:last-child{border-bottom:none}
+
+@media(max-width:640px){
+  .grid-2{grid-template-columns:1fr}
+  .nav{padding:10px 16px;flex-wrap:wrap;gap:10px}
+  .nav-tabs{width:100%;justify-content:center;overflow-x:auto}
+  .stat-v{font-size:22px}.stitle{font-size:22px}
+  .code-v{font-size:30px;letter-spacing:5px}
+  .filters{flex-direction:column}
+  .table{font-size:12px}
+  .nav-tab{padding:6px 10px;font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ LOGIN SCREEN ═══════════ -->
+<div id="loginScreen" style="display:none">
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
+<div class="card fade-in tc" style="max-width:420px;width:100%;padding:40px;">
+  <div class="nav-logo" style="width:64px;height:64px;border-radius:16px;font-size:28px;margin:0 auto 24px">B</div>
+  <h2 style="font-size:24px;font-weight:700;margin-bottom:4px">Gestão Batismo</h2>
+  <p style="color:var(--t2);font-size:13px;margin-bottom:32px">Campo de Chapecó — AD</p>
+
+  <div id="loginForm">
+    <div class="field mb-16">
+      <label class="fl">E-mail</label>
+      <input class="fi" id="loginEmail" type="email" placeholder="seu@email.com">
+    </div>
+    <div class="field mb-24">
+      <label class="fl">Senha</label>
+      <input class="fi" id="loginPass" type="password" placeholder="Sua senha" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="loginError" style="color:var(--red);font-size:13px;margin-bottom:16px;display:none"></div>
+    <button class="btn btn-p btn-full" onclick="doLogin()" id="loginBtn" style="padding:14px;font-size:15px">Entrar</button>
+  </div>
+
+  <div class="divider"></div>
+  <button class="btn btn-g btn-full" onclick="showSetup()">⚙ Configurar Firebase</button>
+  <button class="btn btn-g btn-full mt-12" onclick="startDemo()">Modo Demonstração</button>
+</div>
+</div>
+</div>
+
+<!-- ═══════════ SETUP MODAL ═══════════ -->
+<div id="setupModal" class="overlay" style="display:none">
+<div class="card modal fade-in" style="padding:32px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h3 style="font-size:18px">Configuração Firebase</h3>
+    <button class="btn btn-g" onclick="hideSetup()" style="padding:6px 12px">✕</button>
+  </div>
+  <p style="color:var(--t2);font-size:13px;margin-bottom:16px;line-height:1.6">Cole o objeto <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-size:12px">firebaseConfig</code> do seu projeto Firebase. Ative Authentication (Email/Password) e Firestore.</p>
+  <div class="field mb-16">
+    <textarea id="cfgInput" class="fi" rows="9" style="font-family:'Courier New',monospace;font-size:12px;line-height:1.6;resize:vertical" placeholder='{
+  apiKey: "AIza...",
+  authDomain: "xxx.firebaseapp.com",
+  projectId: "xxx",
+  storageBucket: "xxx.appspot.com",
+  messagingSenderId: "123",
+  appId: "1:123:web:abc"
+}'></textarea>
+  </div>
+  <div id="cfgError" style="color:var(--red);font-size:13px;margin-bottom:12px;display:none"></div>
+  <button class="btn btn-p btn-full" onclick="saveConfig()" style="padding:14px">Salvar e Conectar</button>
+  <div class="divider"></div>
+  <div class="info-box">
+    <span style="font-size:16px">ℹ</span>
+    <div>
+      <strong>Primeiro acesso?</strong> Após conectar, crie o primeiro admin no console do Firebase Authentication. Depois, no Firestore, crie a coleção <code>usuarios</code> com um documento cujo ID seja o UID do usuário, contendo <code>{ role: "admin", nome: "Seu Nome" }</code>.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════ MAIN APP ═══════════ -->
+<div id="mainApp" style="display:none">
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-logo">B</div>
+    <div>
+      <div style="font-size:15px;font-weight:700;line-height:1.2">Gestão Batismo</div>
+      <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:6px">
+        <span class="conn-dot" id="connDot"></span>
+        <span id="connLabel">—</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="nav-tabs" id="navTabs"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="userBadge" class="badge"></span>
+      <button class="btn btn-g" onclick="doLogout()" style="padding:6px 12px;font-size:11px">Sair</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── ADMIN VIEW ── -->
+<div id="view-admin" class="view">
+<div style="padding:30px 20px;max-width:1100px;margin:0 auto">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px" class="mb-28">
+    <div>
+      <div class="stag" style="color:var(--accent)">Painel Administrativo</div>
+      <h1 class="stitle">Gestão Batismo</h1>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-s" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-s" onclick="showLogModal()">📜 Log</button>
+      <button class="btn btn-s" onclick="showUsersModal()" id="btnUsers" style="display:none">👤 Usuários</button>
+      <button class="btn btn-p" onclick="switchView('form')">＋ Novo</button>
+    </div>
+  </div>
+
+  <div class="grid-4 mb-24" id="statsRow"></div>
+
+  <!-- Tab toggle -->
+  <div style="display:flex;gap:2px;background:var(--surface);padding:4px;border-radius:10px;border:1px solid var(--border);margin-bottom:20px">
+    <button class="btn" id="tabOv" onclick="adminTab('ov')" style="flex:1;justify-content:center;border-radius:8px;background:var(--accent);color:#fff">📊 Visão Geral</button>
+    <button class="btn" id="tabLi" onclick="adminTab('li')" style="flex:1;justify-content:center;border-radius:8px;background:transparent;color:var(--t2)">📋 Candidatos</button>
+  </div>
+
+  <div id="adminOv" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+    <div class="card"><div style="font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px">Gênero</div><canvas id="chGender" height="220"></canvas></div>
+    <div class="card"><div style="font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px">Faixa Etária</div><canvas id="chAge" height="220"></canvas></div>
+    <div class="card" style="grid-column:1/-1"><div style="font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px">Top 10 Congregações</div><canvas id="chCong" height="300"></canvas></div>
+    <div class="card"><div style="font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px">Status</div><canvas id="chStatus" height="220"></canvas></div>
+    <div class="card"><div style="font-size:13px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px">Tamanho de Roupa</div><canvas id="chRoupa" height="220"></canvas></div>
+  </div>
+
+  <div id="adminLi" style="display:none">
+    <div class="card" style="padding:20px">
+      <div class="filters">
+        <div class="field"><input class="fi" id="srcInput" placeholder="Buscar nome, código ou CPF..." oninput="renderTable()"></div>
+        <div class="field"><select class="fs" id="fltSt" onchange="renderTable()"><option value="">Todos status</option><option>Pendente</option><option>Confirmado</option><option>Batizado</option></select></div>
+        <div class="field"><select class="fs" id="fltCg" onchange="renderTable()"><option value="">Todas congregações</option></select></div>
+      </div>
+      <div id="tblCount" style="font-size:12px;color:var(--t3);margin-bottom:12px"></div>
+      <div style="overflow-x:auto" id="tblWrap"></div>
+    </div>
+  </div>
+
+  <div id="adminDet" style="display:none"></div>
+</div>
+</div>
+
+<!-- ── FORM VIEW ── -->
+<div id="view-form" class="view">
+<div style="min-height:calc(100vh - 60px);display:flex;align-items:flex-start;justify-content:center;padding:40px 20px">
+<div style="max-width:600px;width:100%">
+  <div id="fmOk" style="display:none"></div>
+  <div id="fmBox">
+    <div class="tc mb-24">
+      <div class="stag" style="color:var(--accent)">Campo de Chapecó</div>
+      <h1 class="stitle" style="font-size:28px">Cadastro para Batismo</h1>
+      <p class="sdesc">Preencha os dados do candidato ao batismo</p>
+    </div>
+    <div class="card" style="padding:32px">
+      <div class="step-h"><span class="step-n">1</span> Dados Pessoais</div>
+      <div class="flex-col gap-14">
+        <div class="field"><label class="fl">Nome Completo <span class="req">*</span></label><input class="fi" id="fNm"><div class="fe" id="eNm"></div></div>
+        <div class="grid-2">
+          <div class="field"><label class="fl">Gênero <span class="req">*</span></label><select class="fs" id="fGn"><option value="">Selecione</option><option value="M">Masculino</option><option value="F">Feminino</option></select><div class="fe" id="eGn"></div></div>
+          <div class="field"><label class="fl">Nascimento <span class="req">*</span></label><input class="fi" type="date" id="fNa"><div class="fe" id="eNa"></div></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label class="fl">WhatsApp</label><input class="fi" id="fWa" placeholder="(49) 99999-9999" oninput="this.value=maskPhone(this.value)"><div class="fe" id="eWa"></div></div>
+          <div class="field"><label class="fl">CPF</label><input class="fi" id="fCp" placeholder="000.000.000-00" oninput="this.value=maskCPF(this.value)"><div class="fe" id="eCp"></div></div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="step-h"><span class="step-n">2</span> Dados Eclesiásticos</div>
+      <div class="flex-col gap-14">
+        <div class="field"><label class="fl">Congregação <span class="req">*</span></label><select class="fs" id="fCg" onchange="togOutra()"></select><div class="fe" id="eCg"></div></div>
+        <div class="field" id="outraW" style="display:none"><label class="fl">Qual? <span class="req">*</span></label><input class="fi" id="fCgO"><div class="fe" id="eCgO"></div></div>
+        <div class="grid-2">
+          <div class="field"><label class="fl">Instrutor</label><input class="fi" id="fIn" placeholder="Nome do instrutor"></div>
+          <div class="field"><label class="fl">Decisão</label><select class="fs" id="fDe"><option value="">Selecione</option><option>Conversão</option><option>Reconciliação</option><option>Transferência</option></select></div>
+        </div>
+        <div class="ck-w" onclick="togCurso()"><div class="ck" id="fCuBox"></div><span style="font-size:14px">Concluiu o curso de batismo</span></div>
+      </div>
+      <div class="divider"></div>
+      <div class="step-h"><span class="step-n">3</span> Saúde e Vestuário</div>
+      <div class="flex-col gap-14">
+        <div class="grid-2">
+          <div class="field"><label class="fl">Comorbidade</label><input class="fi" id="fCo" placeholder="Diabetes, Asma..."></div>
+          <div class="field"><label class="fl">Necessidade Especial</label><input class="fi" id="fNe" placeholder="Cadeirante..."></div>
+        </div>
+        <div class="field"><label class="fl">Roupa <span class="req">*</span></label><select class="fs" id="fTa"><option value="">Selecione</option><option>PP</option><option>P</option><option>M</option><option>G</option><option>GG</option><option>XGG</option></select><div class="fe" id="eTa"></div></div>
+      </div>
+      <div class="info-box mt-20"><span style="font-size:16px">ℹ</span><span>Dados de saúde são confidenciais e visíveis apenas para administradores (LGPD).</span></div>
+      <button class="btn btn-p btn-full mt-24" onclick="submitForm()" style="padding:14px;font-size:15px" id="subBtn">Finalizar Cadastro</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ── RECEPTION VIEW ── -->
+<div id="view-reception" class="view">
+<div style="min-height:calc(100vh - 60px);display:flex;align-items:flex-start;justify-content:center;padding:40px 20px">
+<div style="max-width:500px;width:100%">
+  <div class="tc mb-24">
+    <div class="stag" style="color:var(--green)">Recepção</div>
+    <h1 class="stitle" style="font-size:26px">Check-in do Batismo</h1>
+    <p class="sdesc">Digite o código ou CPF do candidato</p>
+  </div>
+  <div class="card" style="padding:28px">
+    <div style="display:flex;gap:8px">
+      <div class="field" style="flex:1"><input class="fi" id="recSrc" placeholder="Código (ex: A3B7K) ou CPF" onkeydown="if(event.key==='Enter')doCheckin()"></div>
+      <button class="btn btn-p" onclick="doCheckin()">Buscar</button>
+    </div>
+    <div id="recRes" class="mt-20"></div>
+  </div>
+  <div class="tc mt-20">
+    <button class="btn btn-g" onclick="switchView('admin')" id="recBackBtn" style="display:none">Voltar ao Admin</button>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ── USERS MODAL ── -->
+<div id="usersModal" class="overlay" style="display:none">
+<div class="card modal fade-in" style="padding:32px;max-width:540px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h3 style="font-size:18px">Gerenciar Usuários</h3>
+    <button class="btn btn-g" onclick="hideUsersModal()" style="padding:6px 12px">✕</button>
+  </div>
+  <div id="usersList" class="mb-24"></div>
+  <div class="divider"></div>
+  <h4 style="font-size:14px;font-weight:700;margin-bottom:16px">Criar Novo Usuário</h4>
+  <div class="flex-col gap-14">
+    <div class="grid-2">
+      <div class="field"><label class="fl">Nome</label><input class="fi" id="nuNome" placeholder="Nome completo"></div>
+      <div class="field"><label class="fl">Perfil</label><select class="fs" id="nuRole"><option value="recepcionista">Recepcionista</option><option value="admin">Administrador</option></select></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label class="fl">E-mail</label><input class="fi" id="nuEmail" type="email" placeholder="email@exemplo.com"></div>
+      <div class="field"><label class="fl">Senha</label><input class="fi" id="nuPass" type="password" placeholder="Min. 6 caracteres"></div>
+    </div>
+    <div id="nuError" style="color:var(--red);font-size:13px;display:none"></div>
+    <button class="btn btn-p" onclick="createUser()">Criar Usuário</button>
+  </div>
+</div>
+</div>
+
+<!-- ── LOG MODAL ── -->
+<div id="logModal" class="overlay" style="display:none">
+<div class="card modal fade-in" style="padding:32px;max-width:600px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h3 style="font-size:18px">Log de Atividades</h3>
+    <button class="btn btn-g" onclick="hideLogModal()" style="padding:6px 12px">✕</button>
+  </div>
+  <div id="logList" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:10px"></div>
+</div>
+</div>
+
+</div><!-- /mainApp -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ═══════════════════════════════════════════════════════════
+const CONGS=["Águas de Chapecó","Alvorada","Baronesa","Bela Vista","Belvedere","Boa Vista","Bom Pastor","Cristo Rei","Efapi","Eldorado","Elias Galon","Engenho Braun","Esplanada","Jardim América","Jardim do Lago","Líder 1","Líder 2","Linha Marcon","Mantelli","Marechal Bormann","Maria Goretti","Palmital","Parati","Passo dos Fortes","Pinheirinho","Rosana","Saic","Santa Maria","Santo Antônio","São Cristóvão","São Pedro","Sede","Seminário","Shekinah","Trevo","Universidade","Universitário","Vila Real","Vila Rica","Vitório Rosa"];
+const CC="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const SEED=[
+  {nome:"Maria Silva",genero:"F",nascimento:"1990-03-15",whatsapp:"(49) 99912-3456",cpf:"529.982.247-25",congregacao:"Sede",instrutor:"Pr. João",decisao:"Conversão",curso:true,comorbidade:"",necessidade:"",tamanhoRoupa:"M",codigo:"A3B7K",status:"Pendente"},
+  {nome:"José Santos",genero:"M",nascimento:"1985-07-22",whatsapp:"(49) 99887-6543",cpf:"987.654.321-00",congregacao:"Efapi",instrutor:"Dc. Ana",decisao:"Reconciliação",curso:true,comorbidade:"Diabetes",necessidade:"",tamanhoRoupa:"G",codigo:"C9D2F",status:"Confirmado"},
+  {nome:"Ana Oliveira",genero:"F",nascimento:"2008-11-30",whatsapp:"(49) 99765-4321",cpf:"123.456.789-09",congregacao:"Pinheirinho",instrutor:"Ob. Carlos",decisao:"Conversão",curso:false,comorbidade:"",necessidade:"",tamanhoRoupa:"P",codigo:"E5G8H",status:"Pendente"},
+  {nome:"Pedro Costa",genero:"M",nascimento:"1960-01-10",whatsapp:"(49) 99654-3210",cpf:"321.654.987-00",congregacao:"Bom Pastor",instrutor:"Pr. Marcos",decisao:"Conversão",curso:true,comorbidade:"Hipertensão",necessidade:"Cadeirante",tamanhoRoupa:"GG",codigo:"J4L6N",status:"Batizado"},
+  {nome:"Luísa Ferreira",genero:"F",nascimento:"2000-05-20",whatsapp:"(49) 99543-2109",cpf:"654.987.321-00",congregacao:"Alvorada",instrutor:"Dc. Raquel",decisao:"Conversão",curso:true,comorbidade:"",necessidade:"",tamanhoRoupa:"M",codigo:"P2R5T",status:"Confirmado"},
+  {nome:"Carlos Mendes",genero:"M",nascimento:"1975-09-08",whatsapp:"(49) 99432-1098",cpf:"789.321.654-00",congregacao:"Sede",instrutor:"Pr. João",decisao:"Reconciliação",curso:true,comorbidade:"Asma",necessidade:"",tamanhoRoupa:"G",codigo:"U7V3W",status:"Pendente"},
+  {nome:"Beatriz Lima",genero:"F",nascimento:"2010-12-01",whatsapp:"(49) 99321-0987",cpf:"456.789.123-00",congregacao:"Líder 1",instrutor:"Ob. Paulo",decisao:"Conversão",curso:false,comorbidade:"",necessidade:"",tamanhoRoupa:"PP",codigo:"X8Y4Z",status:"Pendente"},
+  {nome:"Rafael Souza",genero:"M",nascimento:"1998-04-17",whatsapp:"(49) 99210-9876",cpf:"147.258.369-00",congregacao:"Universitário",instrutor:"Dc. Felipe",decisao:"Conversão",curso:true,comorbidade:"",necessidade:"",tamanhoRoupa:"M",codigo:"B6C3D",status:"Confirmado"},
+];
+
+let db=null,auth=null,isDemo=false,candidatos=[],userRole='admin',userName='Admin',unsub=null;
+let chG=null,chA=null,chC=null,chS=null,chR=null,cursoOn=false;
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  populateCongs();
+  const FIREBASE_CONFIG={
+    apiKey:"AIzaSyBg-3F7xs4PWAIQFp2zBkdKJxoZgX-Dido",
+    authDomain:"gestao-batismo-chapeco.firebaseapp.com",
+    projectId:"gestao-batismo-chapeco",
+    storageBucket:"gestao-batismo-chapeco.firebasestorage.app",
+    messagingSenderId:"452905508964",
+    appId:"1:452905508964:web:639170e360827de18c7f71"
+  };
+  initFB(FIREBASE_CONFIG);
+});
+
+function populateCongs(){
+  const s=document.getElementById('fCg');
+  s.innerHTML='<option value="">Selecione</option>';
+  CONGS.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;s.appendChild(o)});
+  const o2=document.createElement('option');o2.value='__outro__';o2.textContent='Outro (informar)';s.appendChild(o2);
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIREBASE
+// ═══════════════════════════════════════════════════════════
+function showSetup(){document.getElementById('setupModal').style.display=''}
+function hideSetup(){document.getElementById('setupModal').style.display='none'}
+
+function saveConfig(){
+  const raw=document.getElementById('cfgInput').value.trim();
+  const err=document.getElementById('cfgError');err.style.display='none';
+  try{
+    let cfg;try{cfg=JSON.parse(raw)}catch{cfg=new Function('return('+raw+')')()}
+    if(!cfg.projectId)throw new Error('projectId ausente');
+    localStorage.setItem('gb_cfg',JSON.stringify(cfg));
+    hideSetup();initFB(cfg);
+  }catch(e){err.textContent='Erro: '+e.message;err.style.display=''}
+}
+
+function initFB(cfg){
+  try{
+    if(!firebase.apps.length)firebase.initializeApp(cfg);
+    db=firebase.firestore();auth=firebase.auth();isDemo=false;
+    auth.onAuthStateChanged(u=>{
+      if(u){loadUserRole(u.uid)}
+      else{document.getElementById('mainApp').style.display='none';document.getElementById('loginScreen').style.display=''}
+    });
+    document.getElementById('loginScreen').style.display='';
+    setConn('on','Firebase conectado');
+  }catch(e){console.error(e);document.getElementById('loginScreen').style.display=''}
+}
+
+async function loadUserRole(uid){
+  try{
+    const doc=await db.collection('usuarios').doc(uid).get();
+    if(doc.exists){userRole=doc.data().role||'recepcionista';userName=doc.data().nome||'Usuário'}
+    else{userRole='admin';userName='Admin (sem perfil)'}
+  }catch(e){userRole='admin';userName='Admin'}
+  enterApp();
+}
+
+function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const err=document.getElementById('loginError');err.style.display='none';
+  if(!email||!pass){err.textContent='Preencha e-mail e senha';err.style.display='';return}
+  document.getElementById('loginBtn').disabled=true;document.getElementById('loginBtn').textContent='Entrando...';
+  auth.signInWithEmailAndPassword(email,pass).catch(e=>{
+    const msgs={'auth/user-not-found':'Usuário não encontrado','auth/wrong-password':'Senha incorreta','auth/invalid-credential':'Credenciais inválidas','auth/too-many-requests':'Muitas tentativas. Aguarde.'};
+    err.textContent=msgs[e.code]||e.message;err.style.display='';
+  }).finally(()=>{document.getElementById('loginBtn').disabled=false;document.getElementById('loginBtn').textContent='Entrar'});
+}
+
+function doLogout(){
+  if(isDemo){location.reload();return}
+  auth.signOut();
+}
+
+function startDemo(){
+  isDemo=true;userRole='admin';userName='Admin Demo';
+  candidatos=SEED.map((c,i)=>({...c,id:'d'+i}));
+  setConn('demo','Modo demonstração');enterApp();
+}
+
+function enterApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').style.display='';
+  setupNav();
+  if(!isDemo)listenData();
+  onUpdate();
+}
+
+function setConn(m,l){
+  document.getElementById('connDot').className='conn-dot '+m;
+  document.getElementById('connLabel').textContent=l;
+}
+
+function setupNav(){
+  const isAdmin=userRole==='admin';
+  const tabs=[];
+  if(isAdmin)tabs.push({id:'admin',icon:'⬡',label:'Admin'});
+  tabs.push({id:'reception',icon:'📋',label:'Recepção'});
+  if(isAdmin)tabs.push({id:'form',icon:'＋',label:'Cadastro'});
+
+  document.getElementById('navTabs').innerHTML=tabs.map((t,i)=>
+    `<button class="nav-tab ${i===0?'active':''}" data-view="${t.id}" onclick="switchView('${t.id}')">${t.icon} ${t.label}</button>`
+  ).join('');
+
+  const badge=document.getElementById('userBadge');
+  badge.className='badge '+(isAdmin?'b-role-admin':'b-role-rec');
+  badge.textContent=userName;
+
+  if(isAdmin){document.getElementById('btnUsers').style.display='';document.getElementById('recBackBtn').style.display=''}
+  else{document.getElementById('btnUsers').style.display='none';document.getElementById('recBackBtn').style.display='none'}
+
+  switchView(isAdmin?'admin':'reception');
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIRESTORE LISTENER
+// ═══════════════════════════════════════════════════════════
+function listenData(){
+  if(!db)return;if(unsub)unsub();
+  unsub=db.collection('candidatos').orderBy('nome').onSnapshot(s=>{
+    candidatos=s.docs.map(d=>({id:d.id,...d.data()}));
+    onUpdate();
+  },e=>{console.error(e);setConn('off','Erro de conexão')});
+}
+
+// ═══════════════════════════════════════════════════════════
+// CRUD
+// ═══════════════════════════════════════════════════════════
+async function addCand(data){
+  const codigo=genCode();
+  const rec={...data,codigo,status:'Pendente',criadoEm:new Date().toISOString()};
+  if(isDemo){rec.id='d'+Date.now();candidatos.push(rec);onUpdate()}
+  else{const ref=await db.collection('candidatos').add(rec);rec.id=ref.id;logAct('Cadastro',`${data.nome} (${codigo})`)}
+  return rec;
+}
+
+async function updStatus(id,status){
+  const c=candidatos.find(x=>x.id===id);
+  if(isDemo){candidatos=candidatos.map(x=>x.id===id?{...x,status}:x);onUpdate()}
+  else{await db.collection('candidatos').doc(id).update({status});logAct('Status',`${c?.nome}: ${status}`)}
+}
+
+async function delCand(id){
+  const c=candidatos.find(x=>x.id===id);
+  if(isDemo){candidatos=candidatos.filter(x=>x.id!==id);onUpdate()}
+  else{await db.collection('candidatos').doc(id).delete();logAct('Exclusão',c?.nome||id)}
+}
+
+async function logAct(tipo,desc){
+  if(isDemo||!db)return;
+  try{await db.collection('log_atividades').add({tipo,descricao:desc,usuario:userName,role:userRole,timestamp:firebase.firestore.FieldValue.serverTimestamp()})}catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════
+function genCode(){const ex=new Set(candidatos.map(c=>c.codigo));let c;do{c=Array.from({length:5},()=>CC[Math.floor(Math.random()*CC.length)]).join('')}while(ex.has(c));return c}
+function maskCPF(v){const d=v.replace(/\D/g,'').slice(0,11);if(d.length<=3)return d;if(d.length<=6)return d.slice(0,3)+'.'+d.slice(3);if(d.length<=9)return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6);return d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9)}
+function maskPhone(v){const d=v.replace(/\D/g,'').slice(0,11);if(d.length<=2)return d.length?'('+d:'';if(d.length<=7)return'('+d.slice(0,2)+') '+d.slice(2);return'('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7)}
+function valCPF(cpf){const d=cpf.replace(/\D/g,'');if(d.length!==11||/^(\d)\1{10}$/.test(d))return false;let s=0;for(let i=0;i<9;i++)s+=parseInt(d[i])*(10-i);let r=(s*10)%11;if(r===10)r=0;if(r!==parseInt(d[9]))return false;s=0;for(let i=0;i<10;i++)s+=parseInt(d[i])*(11-i);r=(s*10)%11;if(r===10)r=0;return r===parseInt(d[10])}
+function calcAge(n){if(!n)return null;const h=new Date(),b=new Date(n);let a=h.getFullYear()-b.getFullYear();const m=h.getMonth()-b.getMonth();if(m<0||(m===0&&h.getDate()<b.getDate()))a--;return a}
+function fxEt(a){if(a===null)return'N/I';if(a<=12)return'Criança';if(a<=18)return'Jovem';if(a<=59)return'Adulto';return'Idoso'}
+function stBadge(s){const m={Pendente:'b-pen',Confirmado:'b-con',Batizado:'b-bat'};return`<span class="badge ${m[s]||'b-pen'}">${s}</span>`}
+function fmtDate(d){if(!d)return'N/I';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]}
+
+// ═══════════════════════════════════════════════════════════
+// VIEW SWITCHING
+// ═══════════════════════════════════════════════════════════
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const el=document.getElementById('view-'+name);if(el)el.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.toggle('active',t.dataset.view===name));
+  if(name==='form'){document.getElementById('fmOk').style.display='none';document.getElementById('fmBox').style.display=''}
+  if(name==='admin'){document.getElementById('adminDet').style.display='none';document.getElementById('adminOv').style.display='';document.getElementById('adminLi').style.display='none';adminTab('ov')}
+}
+
+function adminTab(t){
+  const isOv=t==='ov';
+  document.getElementById('adminOv').style.display=isOv?'':'none';
+  document.getElementById('adminLi').style.display=isOv?'none':'';
+  document.getElementById('tabOv').style.background=isOv?'var(--accent)':'transparent';
+  document.getElementById('tabOv').style.color=isOv?'#fff':'var(--t2)';
+  document.getElementById('tabLi').style.background=isOv?'transparent':'var(--accent)';
+  document.getElementById('tabLi').style.color=isOv?'var(--t2)':'#fff';
+  if(!isOv)renderTable();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DATA UPDATE
+// ═══════════════════════════════════════════════════════════
+function onUpdate(){renderStats();renderCharts();renderTable();updCongFilter()}
+
+function renderStats(){
+  const t=candidatos.length,p=candidatos.filter(c=>c.status==='Pendente').length;
+  const co=candidatos.filter(c=>c.status==='Confirmado').length,b=candidatos.filter(c=>c.status==='Batizado').length;
+  document.getElementById('statsRow').innerHTML=[
+    stHTML('Total',t,'👥','var(--accent)','var(--accent-soft)'),
+    stHTML('Pendentes',p,'⏳','var(--gold)','var(--gold-soft)'),
+    stHTML('Confirmados',co,'✓','var(--green)','var(--green-soft)'),
+    stHTML('Batizados',b,'🕊','var(--purple)','var(--purple-soft)'),
+  ].join('');
+}
+function stHTML(l,v,i,c,bg){return`<div class="card stat-card"><div class="stat-icon" style="background:${bg};color:${c}">${i}</div><div><div class="stat-v">${v}</div><div class="stat-l">${l}</div></div></div>`}
+
+// ═══════════════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════════════
+const CC7=['#3B82F6','#F59E0B','#10B981','#8B5CF6','#EF4444','#06B6D4','#EC4899'];
+const chOpt={responsive:true,plugins:{legend:{position:'bottom',labels:{color:'#8896B0',font:{family:'Outfit',size:12},padding:16,usePointStyle:true}}}};
+
+function renderCharts(){
+  // Gender
+  const m=candidatos.filter(c=>c.genero==='M').length,f=candidatos.filter(c=>c.genero==='F').length;
+  if(chG)chG.destroy();
+  chG=new Chart(document.getElementById('chGender'),{type:'doughnut',data:{labels:['Masculino','Feminino'],datasets:[{data:[m,f],backgroundColor:['#3B82F6','#F59E0B'],borderWidth:0,borderRadius:4}]},options:chOpt});
+
+  // Age
+  const ag={};['Criança','Jovem','Adulto','Idoso'].forEach(g=>ag[g]=0);
+  candidatos.forEach(c=>{const g=fxEt(calcAge(c.nascimento));if(ag[g]!==undefined)ag[g]++});
+  if(chA)chA.destroy();
+  chA=new Chart(document.getElementById('chAge'),{type:'bar',data:{labels:Object.keys(ag),datasets:[{data:Object.values(ag),backgroundColor:'#3B82F6',borderRadius:8,barThickness:36}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8896B0',font:{family:'Outfit',size:11}},grid:{display:false},border:{display:false}},y:{ticks:{color:'#5A6A84',font:{family:'Outfit',size:11},stepSize:1},grid:{color:'#1E3054'},border:{display:false},beginAtZero:true}}}});
+
+  // Congs
+  const cg={};candidatos.forEach(c=>{cg[c.congregacao]=(cg[c.congregacao]||0)+1});
+  const sorted=Object.entries(cg).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(chC)chC.destroy();
+  chC=new Chart(document.getElementById('chCong'),{type:'bar',data:{labels:sorted.map(s=>s[0]),datasets:[{data:sorted.map(s=>s[1]),backgroundColor:'#10B981',borderRadius:8,barThickness:24}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5A6A84',font:{family:'Outfit',size:11},stepSize:1},grid:{color:'#1E3054'},border:{display:false},beginAtZero:true},y:{ticks:{color:'#8896B0',font:{family:'Outfit',size:11}},grid:{display:false},border:{display:false}}}}});
+
+  // Status
+  const st={Pendente:0,Confirmado:0,Batizado:0};candidatos.forEach(c=>{if(st[c.status]!==undefined)st[c.status]++});
+  if(chS)chS.destroy();
+  chS=new Chart(document.getElementById('chStatus'),{type:'doughnut',data:{labels:Object.keys(st),datasets:[{data:Object.values(st),backgroundColor:['#F59E0B','#10B981','#3B82F6'],borderWidth:0,borderRadius:4}]},options:chOpt});
+
+  // Roupa
+  const rp={};candidatos.forEach(c=>{rp[c.tamanhoRoupa]=(rp[c.tamanhoRoupa]||0)+1});
+  const rpS=Object.entries(rp).sort((a,b)=>['PP','P','M','G','GG','XGG'].indexOf(a[0])-['PP','P','M','G','GG','XGG'].indexOf(b[0]));
+  if(chR)chR.destroy();
+  chR=new Chart(document.getElementById('chRoupa'),{type:'bar',data:{labels:rpS.map(s=>s[0]),datasets:[{data:rpS.map(s=>s[1]),backgroundColor:'#8B5CF6',borderRadius:8,barThickness:32}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8896B0',font:{family:'Outfit',size:11}},grid:{display:false},border:{display:false}},y:{ticks:{color:'#5A6A84',font:{family:'Outfit',size:11},stepSize:1},grid:{color:'#1E3054'},border:{display:false},beginAtZero:true}}}});
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABLE
+// ═══════════════════════════════════════════════════════════
+function updCongFilter(){
+  const s=document.getElementById('fltCg'),cur=s.value;
+  const cs=[...new Set(candidatos.map(c=>c.congregacao))].sort();
+  s.innerHTML='<option value="">Todas congregações</option>';
+  cs.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;s.appendChild(o)});s.value=cur;
+}
+
+function renderTable(){
+  const q=(document.getElementById('srcInput').value||'').toLowerCase();
+  const st=document.getElementById('fltSt').value,cg=document.getElementById('fltCg').value;
+  const flt=candidatos.filter(c=>{
+    if(st&&c.status!==st)return false;if(cg&&c.congregacao!==cg)return false;
+    if(q)return c.nome.toLowerCase().includes(q)||c.codigo.toLowerCase().includes(q)||(c.cpf||'').includes(q);return true;
+  });
+  document.getElementById('tblCount').textContent=`${flt.length} candidato${flt.length!==1?'s':''} encontrado${flt.length!==1?'s':''}`;
+  let h='<table class="table"><thead><tr><th>Nome</th><th>Congregação</th><th>Código</th><th>Idade</th><th>Roupa</th><th>Status</th><th></th></tr></thead><tbody>';
+  flt.forEach(c=>{const a=calcAge(c.nascimento);h+=`<tr class="dr" onclick="showDet('${c.id}')"><td class="td-nm">${c.nome}</td><td>${c.congregacao}</td><td class="td-cd">${c.codigo}</td><td>${a!==null?a+'a':'–'}</td><td>${c.tamanhoRoupa}</td><td>${stBadge(c.status)}</td><td style="color:var(--t3)">→</td></tr>`});
+  h+='</tbody></table>';document.getElementById('tblWrap').innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DETAIL PANEL
+// ═══════════════════════════════════════════════════════════
+function showDet(id){
+  const c=candidatos.find(x=>x.id===id);if(!c)return;
+  const a=calcAge(c.nascimento);
+  document.getElementById('adminOv').style.display='none';document.getElementById('adminLi').style.display='none';
+
+  const isAdmin=userRole==='admin';
+  // Receptionist sees limited data
+  let fields=[['Código',c.codigo],['Gênero',c.genero==='M'?'Masculino':'Feminino'],['Idade',a!==null?`${a} anos (${fxEt(a)})`:'N/I'],['Nascimento',fmtDate(c.nascimento)],['Roupa',c.tamanhoRoupa],['Congregação',c.congregacao]];
+
+  if(isAdmin){
+    fields.push(['WhatsApp',c.whatsapp||'N/I'],['CPF',c.cpf||'N/I'],['Instrutor',c.instrutor||'N/I'],['Decisão',c.decisao||'N/I'],['Curso',c.curso?'Sim':'Não'],['Comorbidade',c.comorbidade||'Nenhuma'],['Necessidade',c.necessidade||'Nenhuma']);
+  }
+
+  let btns='';
+  if(c.status==='Pendente')btns+=`<button class="btn btn-ok" onclick="doUpd('${c.id}','Confirmado')">✓ Confirmar</button>`;
+  if(c.status==='Confirmado'&&isAdmin)btns+=`<button class="btn btn-p" onclick="doUpd('${c.id}','Batizado')">🕊 Batizado</button>`;
+  if(isAdmin)btns+=`<button class="btn btn-no" onclick="doDel('${c.id}')">Excluir</button>`;
+
+  // WhatsApp share button
+  let waBtn='';
+  if(c.whatsapp&&isAdmin){
+    const phone='55'+c.whatsapp.replace(/\D/g,'');
+    const msg=encodeURIComponent(`Olá ${c.nome}! Seu código de check-in para o batismo é: *${c.codigo}*. Apresente-o no dia do evento. Deus abençoe! 🕊`);
+    waBtn=`<a href="https://wa.me/${phone}?text=${msg}" target="_blank" class="btn btn-ok" style="margin-top:8px">📱 Enviar Código via WhatsApp</a>`;
+  }
+
+  document.getElementById('adminDet').innerHTML=`
+  <div class="fade-in" style="max-width:600px;margin:0 auto;padding-top:10px">
+    <button class="btn btn-g" onclick="closeDet()" style="margin-bottom:20px">← Voltar</button>
+    <div class="card" style="padding:32px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <div><h2 style="font-size:22px;margin:0">${c.nome}</h2><p style="color:var(--t2);margin:4px 0 0;font-size:13px">${c.congregacao}</p></div>
+        ${stBadge(c.status)}
+      </div>
+      <div class="grid-2 gap-14">${fields.map(([l,v])=>`<div class="di"><div class="di-l">${l}</div><div class="di-v">${v}</div></div>`).join('')}</div>
+      <div style="display:flex;gap:8px;margin-top:24px;flex-wrap:wrap">${btns}</div>
+      ${waBtn}
+    </div>
+  </div>`;
+  document.getElementById('adminDet').style.display='';
+}
+
+function closeDet(){
+  document.getElementById('adminDet').style.display='none';
+  document.getElementById('adminOv').style.display='';document.getElementById('adminLi').style.display='';
+  adminTab(document.getElementById('tabLi').style.background!=='transparent'?'li':'ov');
+}
+
+async function doUpd(id,s){await updStatus(id,s);closeDet()}
+async function doDel(id){if(!confirm('Excluir permanentemente?'))return;await delCand(id);closeDet()}
+
+// ═══════════════════════════════════════════════════════════
+// FORM
+// ═══════════════════════════════════════════════════════════
+function togOutra(){document.getElementById('outraW').style.display=document.getElementById('fCg').value==='__outro__'?'':'none'}
+function togCurso(){cursoOn=!cursoOn;const b=document.getElementById('fCuBox');b.classList.toggle('on',cursoOn);b.textContent=cursoOn?'✓':''}
+
+async function submitForm(){
+  ['Nm','Gn','Na','Wa','Cp','Cg','CgO','Ta'].forEach(f=>{const e=document.getElementById('e'+f);if(e)e.textContent='';const i=document.getElementById('f'+f);if(i)i.classList.remove('err')});
+  const d={nome:document.getElementById('fNm').value.trim(),genero:document.getElementById('fGn').value,nascimento:document.getElementById('fNa').value,whatsapp:document.getElementById('fWa').value,cpf:document.getElementById('fCp').value,congregacao:document.getElementById('fCg').value,congregacaoOutra:(document.getElementById('fCgO')||{}).value||'',instrutor:document.getElementById('fIn').value.trim(),decisao:document.getElementById('fDe').value,curso:cursoOn,comorbidade:document.getElementById('fCo').value.trim(),necessidade:document.getElementById('fNe').value.trim(),tamanhoRoupa:document.getElementById('fTa').value};
+
+  let ok=true;function er(f,m){const e=document.getElementById('e'+f);if(e)e.textContent=m;const i=document.getElementById('f'+f);if(i)i.classList.add('err');ok=false}
+  if(!d.nome)er('Nm','Obrigatório');
+  if(!d.genero)er('Gn','Obrigatório');
+  if(!d.nascimento)er('Na','Obrigatória');
+  if(d.cpf&&d.cpf.replace(/\D/g,'').length===11&&!valCPF(d.cpf))er('Cp','CPF inválido');
+  if(d.whatsapp.replace(/\D/g,'').length>0&&d.whatsapp.replace(/\D/g,'').length<11)er('Wa','Incompleto');
+  if(!d.congregacao)er('Cg','Obrigatório');
+  if(d.congregacao==='__outro__'&&!d.congregacaoOutra.trim())er('CgO','Obrigatório');
+  if(!d.tamanhoRoupa)er('Ta','Obrigatório');
+  if(!ok)return;
+
+  if(d.congregacao==='__outro__')d.congregacao=d.congregacaoOutra;delete d.congregacaoOutra;
+
+  const btn=document.getElementById('subBtn');btn.disabled=true;btn.textContent='Salvando...';
+  try{const res=await addCand(d);showOk(res);resetForm()}catch(e){alert('Erro: '+e.message)}
+  btn.disabled=false;btn.textContent='Finalizar Cadastro';
+}
+
+function showOk(c){
+  document.getElementById('fmBox').style.display='none';
+  document.getElementById('fmOk').style.display='';
+
+  // WhatsApp share link
+  let waLink='';
+  if(c.whatsapp){
+    const phone='55'+c.whatsapp.replace(/\D/g,'');
+    const msg=encodeURIComponent(`Olá ${c.nome}! Seu código de check-in para o batismo é: *${c.codigo}*. Apresente no dia do evento. Deus abençoe! 🕊`);
+    waLink=`<a href="https://wa.me/${phone}?text=${msg}" target="_blank" class="btn btn-ok btn-full mt-12">📱 Enviar via WhatsApp</a>`;
+  }
+
+  document.getElementById('fmOk').innerHTML=`
+  <div class="card tc fade-in" style="max-width:460px;margin:0 auto;padding:40px">
+    <div style="width:72px;height:72px;border-radius:50%;background:var(--green-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px;color:var(--green)">✓</div>
+    <h2 style="font-size:22px;margin-bottom:8px">Cadastro Realizado!</h2>
+    <p style="color:var(--t2);margin-bottom:28px;font-size:14px;line-height:1.6">${c.nome}, cadastro registrado com sucesso.</p>
+    <div class="code-box mb-24">
+      <div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:8px">Código de check-in</div>
+      <div class="code-v">${c.codigo}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:8px">Apresente no dia do batismo</div>
+      <div id="qrCode" style="margin:16px auto 0;display:inline-block"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px">
+      <span class="badge" style="color:var(--t2);background:rgba(136,150,176,.12)">${c.congregacao}</span>
+      <span class="badge" style="color:var(--t2);background:rgba(136,150,176,.12)">Roupa: ${c.tamanhoRoupa}</span>
+    </div>
+    ${waLink}
+    <button class="btn btn-s btn-full mt-12" onclick="newForm()">Novo Cadastro</button>
+  </div>`;
+
+  // Generate QR Code
+  try{
+    const qrEl=document.getElementById('qrCode');
+    if(qrEl&&typeof QRCode!=='undefined'){
+      new QRCode(qrEl,{text:c.codigo,width:120,height:120,colorDark:'#3B82F6',colorLight:'#111B2E',correctLevel:QRCode.CorrectLevel.H});
+    }
+  }catch(e){}
+}
+
+function newForm(){document.getElementById('fmOk').style.display='none';document.getElementById('fmBox').style.display=''}
+function resetForm(){
+  ['fNm','fWa','fCp','fIn','fCo','fNe','fCgO'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  ['fGn','fCg','fDe','fTa'].forEach(id=>document.getElementById(id).selectedIndex=0);
+  document.getElementById('fNa').value='';cursoOn=false;
+  document.getElementById('fCuBox').classList.remove('on');document.getElementById('fCuBox').textContent='';
+  document.getElementById('outraW').style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════
+// RECEPTION
+// ═══════════════════════════════════════════════════════════
+function doCheckin(){
+  const s=document.getElementById('recSrc').value.trim();if(!s)return;
+  const q=s.toUpperCase(),cpq=s.replace(/\D/g,'');
+  const c=candidatos.find(x=>x.codigo===q||x.cpf.replace(/\D/g,'')===cpq);
+  const box=document.getElementById('recRes');
+
+  if(!c){box.innerHTML=`<div class="fade-in" style="background:var(--red-soft);border-radius:10px;padding:20px;text-align:center"><div style="font-size:16px;color:var(--red);font-weight:600;margin-bottom:6px">Não encontrado</div><div style="font-size:13px;color:var(--t2);margin-bottom:16px">Verifique o código ou CPF.</div><button class="btn btn-s" onclick="switchView('form')">Cadastro de Última Hora</button></div>`;return}
+
+  const a=calcAge(c.nascimento),canC=c.status==='Pendente';
+  // Receptionist: limited info (no health data)
+  box.innerHTML=`
+  <div class="fade-in">
+    <div style="background:var(--surface);border-radius:10px;border:1px solid var(--border);padding:24px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div><div style="font-size:20px;font-weight:700">${c.nome}</div><div style="font-size:13px;color:var(--t2);margin-top:4px">${c.congregacao}</div></div>
+        ${stBadge(c.status)}
+      </div>
+      <div class="grid-2 gap-14">
+        ${[['Código',c.codigo],['Roupa',c.tamanhoRoupa],['Idade',a!==null?a+' anos':'N/I'],['Gênero',c.genero==='M'?'Masculino':'Feminino']].map(([l,v])=>`<div style="background:var(--card);border-radius:8px;padding:10px 14px"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;font-weight:600">${l}</div><div style="font-size:15px;font-weight:600;margin-top:2px">${v}</div></div>`).join('')}
+      </div>
+      ${c.necessidade?`<div class="alert-w mt-12">⚠ ${c.necessidade}</div>`:''}
+    </div>
+    ${canC?`<button class="btn btn-ok btn-full mt-16" style="padding:14px;font-size:15px" onclick="confCheckin('${c.id}')">✓ Confirmar Presença</button>`
+      :`<div class="mt-16 tc" style="padding:14px;background:var(--green-soft);border-radius:10px"><span style="color:var(--green);font-weight:700;font-size:14px">✓ Presença confirmada</span></div>`}
+  </div>`;
+}
+
+async function confCheckin(id){await updStatus(id,'Confirmado');doCheckin()}
+
+// ═══════════════════════════════════════════════════════════
+// USERS MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function showUsersModal(){
+  document.getElementById('usersModal').style.display='';
+  loadUsers();
+}
+function hideUsersModal(){document.getElementById('usersModal').style.display='none'}
+
+async function loadUsers(){
+  const list=document.getElementById('usersList');
+  if(isDemo){list.innerHTML='<div style="padding:16px;color:var(--t3);text-align:center;font-size:13px">Indisponível no modo demo</div>';return}
+  try{
+    const snap=await db.collection('usuarios').get();
+    if(snap.empty){list.innerHTML='<div style="padding:16px;color:var(--t3);text-align:center;font-size:13px">Nenhum usuário cadastrado</div>';return}
+    list.innerHTML=snap.docs.map(d=>{
+      const u=d.data();
+      const roleBadge=u.role==='admin'?'b-role-admin':'b-role-rec';
+      return`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:14px;font-weight:600">${u.nome||'Sem nome'}</div><div style="font-size:12px;color:var(--t3)">${u.email||d.id}</div></div><span class="badge ${roleBadge}">${u.role}</span></div>`;
+    }).join('');
+  }catch(e){list.innerHTML=`<div style="padding:16px;color:var(--red);font-size:13px">${e.message}</div>`}
+}
+
+async function createUser(){
+  const nome=document.getElementById('nuNome').value.trim();
+  const email=document.getElementById('nuEmail').value.trim();
+  const pass=document.getElementById('nuPass').value;
+  const role=document.getElementById('nuRole').value;
+  const err=document.getElementById('nuError');err.style.display='none';
+
+  if(!nome||!email||!pass){err.textContent='Preencha todos os campos';err.style.display='';return}
+  if(pass.length<6){err.textContent='Senha mínima: 6 caracteres';err.style.display='';return}
+
+  if(isDemo){err.textContent='Indisponível no modo demo';err.style.display='';return}
+
+  try{
+    // Save current user
+    const currentUser=auth.currentUser;
+    const currentEmail=currentUser.email;
+
+    // Create new user via a secondary auth instance approach
+    // Since Firebase client SDK auto-switches users, we use a workaround
+    const secondaryApp=firebase.initializeApp(firebase.app().options,'secondary_'+Date.now());
+    const secondaryAuth=secondaryApp.auth();
+    const cred=await secondaryAuth.createUserWithEmailAndPassword(email,pass);
+
+    // Create user document
+    await db.collection('usuarios').doc(cred.user.uid).set({nome,role,email,criadoEm:new Date().toISOString()});
+
+    await secondaryAuth.signOut();
+    await secondaryApp.delete();
+
+    document.getElementById('nuNome').value='';document.getElementById('nuEmail').value='';document.getElementById('nuPass').value='';
+    logAct('Novo Usuário',`${nome} (${role})`);
+    loadUsers();
+    alert('Usuário criado com sucesso!');
+  }catch(e){
+    const msgs={'auth/email-already-in-use':'E-mail já cadastrado','auth/weak-password':'Senha muito fraca','auth/invalid-email':'E-mail inválido'};
+    err.textContent=msgs[e.code]||e.message;err.style.display='';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTIVITY LOG
+// ═══════════════════════════════════════════════════════════
+async function showLogModal(){
+  document.getElementById('logModal').style.display='';
+  const list=document.getElementById('logList');
+  if(isDemo){list.innerHTML='<div style="padding:24px;color:var(--t3);text-align:center;font-size:13px">Log indisponível no modo demo</div>';return}
+  try{
+    const snap=await db.collection('log_atividades').orderBy('timestamp','desc').limit(50).get();
+    if(snap.empty){list.innerHTML='<div style="padding:24px;color:var(--t3);text-align:center;font-size:13px">Nenhuma atividade registrada</div>';return}
+    list.innerHTML=snap.docs.map(d=>{
+      const l=d.data();
+      const t=l.timestamp?l.timestamp.toDate().toLocaleString('pt-BR'):'—';
+      return`<div class="log-item"><div><div style="font-size:13px;font-weight:600;color:var(--t1)">${l.tipo}: <span style="font-weight:400;color:var(--t2)">${l.descricao}</span></div><div style="font-size:11px;color:var(--t3);margin-top:2px">${l.usuario} (${l.role})</div></div><div style="font-size:11px;color:var(--t3);white-space:nowrap">${t}</div></div>`;
+    }).join('');
+  }catch(e){list.innerHTML=`<div style="padding:16px;color:var(--red);font-size:13px">${e.message}</div>`}
+}
+function hideLogModal(){document.getElementById('logModal').style.display='none'}
+
+// ═══════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════
+function exportCSV(){
+  const hd=['Nome','Gênero','Nascimento','WhatsApp','CPF','Congregação','Instrutor','Decisão','Curso','Comorbidade','Necessidade','Roupa','Código','Status'];
+  const rows=candidatos.map(c=>[c.nome,c.genero==='M'?'Masculino':'Feminino',fmtDate(c.nascimento),c.whatsapp||'',c.cpf||'',c.congregacao,c.instrutor||'',c.decisao||'',c.curso?'Sim':'Não',c.comorbidade||'',c.necessidade||'',c.tamanhoRoupa,c.codigo,c.status]);
+  let csv='\uFEFF'+hd.join(';')+'\n';
+  rows.forEach(r=>{csv+=r.map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(';')+'\n'});
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='batismo_'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'.csv';a.click();
+}
+</script>
+</body>
+</html>
