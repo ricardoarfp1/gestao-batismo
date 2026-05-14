@@ -257,11 +257,20 @@ async function submitInscricao(presencial){
   
   const btn=presencial?document.getElementById('btnPresc'):document.getElementById('btnInsc');
   btn.disabled=true;
-  btn.textContent='Salvando...';
+  btn.textContent='Verificando...';
   
   try{
-    const cod=genCode();
     const whatsClean=w.replace(/\D/g,'');
+    // Verifica se WhatsApp já existe
+    const existeSnap=await db.collection('congresso-inscritos').where('whatsapp','==',whatsClean).get();
+    if(!existeSnap.empty){
+      er(1,'Este WhatsApp já está inscrito');
+      btn.disabled=false;
+      btn.textContent=presencial?'Confirmar Inscrição':'Confirmar Inscrição';
+      return;
+    }
+    
+    const cod=genCode();
     const rec={nome:n,whatsapp:whatsClean,congregacao:cg,setor:st,codigo:cod,status:'pendente',presencial,criadoEm:new Date().toISOString()};
     await db.collection('congresso-inscritos').add(rec);
     showSucesso(n,cod,presencial);
