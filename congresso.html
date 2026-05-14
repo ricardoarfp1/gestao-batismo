@@ -216,7 +216,12 @@ db=firebase.firestore();
 });
 
 // Routing
-function setRoute(r){
+async function setRoute(r){
+  if(r==='confirmacao' && !confirmacaoAtiva){
+    alert('⏳ A confirmação de presença ainda não foi ativada.\n\nAguarde o administrador ativar no painel.');
+    setRoute('inscricao');
+    return;
+  }
   ['inscricao','presencial','confirmacao','sucesso','admin'].forEach(rt=>document.getElementById('route-'+rt).style.display='none');
   if(r==='presencial') document.getElementById('route-presencial').style.display='';
   else if(r==='admin'){if(!adminLogged)openAdminModal();else document.getElementById('route-admin').style.display=''}
@@ -301,6 +306,15 @@ function openAdminModal(){if(!adminLogged)document.getElementById('adminModal').
 
 async function loadAdminData(){
   try{
+    // Load confirmation status
+    const confSnap=await db.collection('config').doc('congresso').get();
+    if(confSnap.exists){
+      confirmacaoAtiva=confSnap.data().confirmacaoAtiva||false;
+    }
+    document.getElementById('confStatus').textContent='Status: '+(confirmacaoAtiva?'Ativa':'Desativada');
+    document.getElementById('btnToggleConf').textContent=confirmacaoAtiva?'Desativar':'Ativar';
+    document.getElementById('btnToggleConf').style.background=confirmacaoAtiva?'var(--red)':'var(--green)';
+    
     const snap=await db.collection('congresso-inscritos').get();
     participantes=snap.docs.map(d=>({...d.data(),id:d.id}));
     const total=participantes.length,presentes=participantes.filter(p=>p.status==='presente').length,pendentes=total-presentes;
@@ -360,11 +374,14 @@ function exportCSV(){
   link.href=URL.createObjectURL(blob);link.download='congresso-participantes.csv';link.click();
 }
 
-function toggleConfirmacao(){
+async function toggleConfirmacao(){
   confirmacaoAtiva=!confirmacaoAtiva;
   document.getElementById('confStatus').textContent='Status: '+(confirmacaoAtiva?'Ativa':'Desativada');
   document.getElementById('btnToggleConf').textContent=confirmacaoAtiva?'Desativar':'Ativar';
   document.getElementById('btnToggleConf').style.background=confirmacaoAtiva?'var(--red)':'var(--green)';
+  try{
+    await db.collection('config').doc('congresso').set({confirmacaoAtiva,updatedAt:new Date().toISOString()},{merge:true});
+  }catch(e){}
 }
 
 function abrirScanner(){
@@ -375,7 +392,16 @@ function abrirScanner(){
 }
 
 // Initialize
-setRoute('inscricao');
+async function init(){
+  try{
+    const confSnap=await db.collection('config').doc('congresso').get();
+    if(confSnap.exists){
+      confirmacaoAtiva=confSnap.data().confirmacaoAtiva||false;
+    }
+  }catch(e){}
+  setRoute('inscricao');
+}
+init();
 </script>
 </body>
 </html>
