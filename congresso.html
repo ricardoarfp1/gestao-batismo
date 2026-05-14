@@ -101,7 +101,7 @@ body{font-family:var(--font);background:var(--navy);color:var(--t1);min-height:1
   </div>
   <div class="card">
     <div class="fc">
-      <div class="field"><label class="fl">Buscar por Código ou CPF</label><input class="fi" id="fBuscaConf" placeholder="AB3K7 ou 000.000.000-00" style="text-transform:uppercase" onkeyup="if(event.key==='Enter') buscarParticipante()"><div class="fe" id="eBusca"></div></div>
+      <div class="field"><label class="fl">Buscar por Código ou WhatsApp</label><input class="fi" id="fBuscaConf" placeholder="AB3K7 ou (49) 99999-9999" style="text-transform:uppercase" onkeyup="if(event.key==='Enter') buscarParticipante()"><div class="fe" id="eBusca"></div></div>
       <button class="btn btn-s" onclick="buscarParticipante()" style="padding:13px;font-size:14px">Buscar</button>
       <button class="btn" onclick="abrirScanner()" style="background:var(--green);color:#fff;padding:13px;font-size:14px">📷 Escanear QR Code</button>
       <div id="scanner" style="display:none;margin-top:12px"><video id="video" style="width:100%;border-radius:8px"></video></div>
@@ -323,16 +323,30 @@ async function confirmarPresenca(){
 }
 
 // ADMIN
-function openAdminModal(){document.getElementById('adminModal').classList.add('show')}
+function openAdminModal(){
+  if(!adminLogged){
+    document.getElementById('eAdmin').textContent='';
+    document.getElementById('adminPass').value='';
+    document.getElementById('adminModal').classList.add('show');
+  }else{
+    setRoute('admin');
+  }
+}
 function closeAdminModal(){document.getElementById('adminModal').classList.remove('show');document.getElementById('adminPass').value=''}
 function loginAdmin(){
-  const p=document.getElementById('adminPass').value;
+  const p=document.getElementById('adminPass').value.trim();
   if(p==='adchapeco2026arfp'){
-    adminLogged=true;closeAdminModal();setRoute('admin');loadAdminData();
-  }else{document.getElementById('eAdmin').textContent='Senha incorreta'}
+    adminLogged=true;
+    closeAdminModal();
+    setTimeout(()=>{
+      setRoute('admin');
+      loadAdminData();
+    },100);
+  }else{
+    document.getElementById('eAdmin').textContent='Senha incorreta';
+  }
 }
-function logoutAdmin(){adminLogged=false;setRoute('inscricao')}
-function openAdminModal(){if(!adminLogged)document.getElementById('adminModal').classList.add('show');else setRoute('admin')}
+function logoutAdmin(){adminLogged=false;document.getElementById('adminPass').value='';setRoute('inscricao')}
 
 async function loadAdminData(){
   try{
