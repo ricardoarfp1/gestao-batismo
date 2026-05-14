@@ -239,19 +239,38 @@ async function submitInscricao(presencial){
   const errs=presencial?['eNomeP','eWhatsP','eCongP','eSetorP']:['eNome','eWhats','eCong','eSetor'];
   errs.forEach(e=>document.getElementById(e).textContent='');
   
-  const n=document.getElementById(fields[0]).value.trim(),w=document.getElementById(fields[1]).value,cg=document.getElementById(fields[2]).value,st=document.getElementById(fields[3]).value;
-  let ok=true;function er(i,m){document.getElementById(errs[i]).textContent=m;ok=false}
+  const n=document.getElementById(fields[0]).value.trim();
+  const w=document.getElementById(fields[1]).value.trim();
+  const cg=document.getElementById(fields[2]).value.trim();
+  const st=document.getElementById(fields[3]).value.trim();
+  
+  let ok=true;
+  function er(i,m){document.getElementById(errs[i]).textContent=m;ok=false}
+  
   if(!n)er(0,'Obrigatório');
-  if(!w||w.replace(/\D/g,'').length<11)er(1,'WhatsApp inválido');
+  if(!w)er(1,'Obrigatório');
+  else if(w.replace(/\D/g,'').length<11)er(1,'WhatsApp inválido');
   if(!cg)er(2,'Obrigatório');
   if(!st)er(3,'Obrigatório');
+  
   if(!ok)return;
   
+  const btn=presencial?document.getElementById('btnPresc'):document.getElementById('btnInsc');
+  btn.disabled=true;
+  btn.textContent='Salvando...';
+  
   try{
-    const cod=genCode(),rec={nome:n,whatsapp:w,congregacao:cg,setor:st,codigo:cod,status:'pendente',presencial,criadoEm:new Date().toISOString()};
+    const cod=genCode();
+    const whatsClean=w.replace(/\D/g,'');
+    const rec={nome:n,whatsapp:whatsClean,congregacao:cg,setor:st,codigo:cod,status:'pendente',presencial,criadoEm:new Date().toISOString()};
     await db.collection('congresso-inscritos').add(rec);
     showSucesso(n,cod,presencial);
-  }catch(e){alert('Erro: '+e.message)}
+  }catch(e){
+    console.error('Erro Firebase:',e);
+    alert('Erro ao salvar: '+e.message);
+    btn.disabled=false;
+    btn.textContent=presencial?'Confirmar Inscrição':'Confirmar Inscrição';
+  }
 }
 
 function showSucesso(n,c,p){
@@ -265,12 +284,23 @@ function showSucesso(n,c,p){
 // CONFIRMACAO
 async function buscarParticipante(){
   const b=document.getElementById('fBuscaConf').value.trim().toUpperCase();
-  if(!b){document.getElementById('eBusca').textContent='Informe código ou CPF';return}
+  if(!b){document.getElementById('eBusca').textContent='Informe código ou WhatsApp';return}
   try{
-    let q=db.collection('congresso-inscritos');
-    if(b.length===5)q=q.where('codigo','==',b);
-    else q=q.where('whatsapp','==',b.replace(/\D/g,''));
-    const snap=await q.get();
+    let snap;
+    // Se tem 5 caracteres e são letras = código
+    if(b.length===5 && /^[A-Z0-9]+$/.test(b)){
+      snap=await db.collection('congresso-inscritos').where('codigo','==',b).get();
+    }
+    // Se é número = WhatsApp
+    else if(/^\d+$/.test(b.replace(/\D/g,'')) && b.replace(/\D/g,'').length>=10){
+      const whatsClean=b.replace(/\D/g,'');
+      snap=await db.collection('congresso-inscritos').where('whatsapp','==',whatsClean).get();
+    }
+    else{
+      document.getElementById('eBusca').textContent='Digite código (5 letras) ou WhatsApp';
+      return;
+    }
+    
     if(snap.empty){document.getElementById('eBusca').textContent='Participante não encontrado';return}
     const p=snap.docs[0].data();
     p.id=snap.docs[0].id;
@@ -279,7 +309,7 @@ async function buscarParticipante(){
     document.getElementById('confDados').innerHTML=`<div>Congregação: ${p.congregacao}</div><div>Setor: ${p.setor}</div><div style="margin-top:8px;padding:8px;background:var(--border);border-radius:4px;color:var(--t1)">Status: ${p.status==='presente'?'✓ Presente':'⏳ Pendente'}</div>`;
     document.getElementById('resultConf').style.display='';
     document.getElementById('eBusca').textContent='';
-  }catch(e){document.getElementById('eBusca').textContent='Erro na busca'}
+  }catch(e){document.getElementById('eBusca').textContent='Erro na busca: '+e.message}
 }
 
 async function confirmarPresenca(){
