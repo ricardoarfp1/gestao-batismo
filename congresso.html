@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Congresso do Batismo — AD Chapecó</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23001F3F'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='18' font-weight='800' font-family='sans-serif'>C</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqrscanner/1.0.0/jsqrscanner.min.js"></script>
+<style>
+:root{--navy:#001F3F;--dark:#0A2851;--card:#0F3A66;--border:#1A5490;--accent:#0078D4;--accent-h:#0060B0;--accent-s:rgba(0,120,212,.1);--green:#107C10;--green-s:rgba(16,124,16,.1);--gold:#FFB900;--red:#E81123;--t1:#F3F3F3;--t2:#A19F9D;--t3:#605E5C;--font:'Outfit',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--navy);color:var(--t1);min-height:100vh}
+.fi{padding:12px 14px;border-radius:8px;border:1px solid var(--border);background:var(--dark);color:var(--t1);font-size:14px;font-family:var(--font);outline:none;transition:border-color .2s;width:100%}
+.fi:focus{border-color:var(--accent)}
+.fs{padding:12px 14px;border-radius:8px;border:1px solid var(--border);background:var(--dark);color:var(--t1);font-size:14px;font-family:var(--font);outline:none;width:100%;appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23A19F9D' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+.fl{font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.8px;text-transform:uppercase}.fl .req{color:var(--red)}
+.fe{font-size:10px;color:var(--red);min-height:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.btn{padding:12px 20px;border-radius:8px;border:none;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-h)}
+.btn-s{background:transparent;color:var(--accent);border:2px solid var(--accent)}.btn-s:hover{background:var(--accent-s)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fc{display:flex;flex-direction:column;gap:14px}
+.badge{display:inline-block;padding:4px 12px;border-radius:16px;font-size:10px;font-weight:700;color:var(--t2);background:rgba(161,159,157,.15)}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center}
+.stat-num{font-size:32px;font-weight:800;color:var(--accent);margin:8px 0}
+.stat-label{font-size:12px;color:var(--t2);text-transform:uppercase;letter-spacing:1px}
+.tab-btn{background:transparent;color:var(--t2);border:none;padding:12px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;border-bottom:2px solid transparent}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.modal{display:none;position:fixed;top:0;left:0;w:100%;h:100%;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
+.modal.show{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:400px;width:90%;max-height:90vh;overflow-y:auto}
+.close-modal{float:right;font-size:24px;color:var(--t2);cursor:pointer}
+@media(max-width:640px){.g2{grid-template-columns:1fr}.card{padding:16px}}
+</style>
+</head>
+<body>
+
+<!-- HEADER NAVIGATION -->
+<div style="background:var(--dark);border-bottom:1px solid var(--border);padding:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;position:sticky;top:0;z-index:100">
+  <button onclick="setRoute('inscricao')" class="tab-btn" id="nav-inscricao" style="border-radius:20px;background:var(--accent);color:#fff;border:none;padding:10px 16px">Inscrição</button>
+  <button onclick="setRoute('confirmacao')" class="tab-btn" id="nav-confirmacao" style="border-radius:20px;background:var(--card);color:var(--t1);border:1px solid var(--border);padding:10px 16px">Confirmação</button>
+  <button onclick="openAdminModal()" class="tab-btn" id="nav-admin" style="border-radius:20px;background:var(--dark);color:var(--t2);border:1px solid var(--border);padding:10px 16px;cursor:pointer">Admin</button>
+</div>
+
+<!-- MAIN CONTAINER -->
+<div style="min-height:calc(100vh - 60px);display:flex;align-items:flex-start;justify-content:center;padding:20px 16px">
+<div style="max-width:500px;width:100%">
+
+<!-- ═══ INSCRICAO ═══ -->
+<div id="route-inscricao" style="display:none">
+  <div style="text-align:center;margin-bottom:20px">
+    <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#0078D4,#001F3F);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;margin:0 auto 12px">C</div>
+    <h1 style="font-size:22px;font-weight:700;margin:0">Congresso do Batismo</h1>
+    <p style="color:var(--t2);margin-top:8px;font-size:13px">Inscrição — AD Chapecó 2026</p>
+  </div>
+  <div class="card">
+    <div class="fc">
+      <div class="field"><label class="fl">Nome Completo <span class="req">*</span></label><input class="fi" id="fNomeInsc" placeholder="Digite seu nome completo"><div class="fe" id="eNome"></div></div>
+      <div class="field"><label class="fl"><span style="display:inline-block;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:9px">WHATSAPP</span></label><input class="fi" id="fWhatsInsc" placeholder="(49) 99999-9999" oninput="this.value=maskPhone(this.value)"><div class="fe" id="eWhats"></div></div>
+      <div class="field"><label class="fl">Congregação <span class="req">*</span></label><select class="fs" id="fCongInsc"><option value="">Selecione</option></select><div class="fe" id="eCong"></div></div>
+      <div class="field"><label class="fl">Setor <span class="req">*</span></label><select class="fs" id="fSetorInsc"><option value="">Selecione</option><option>Visitante</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option></select><div class="fe" id="eSetor"></div></div>
+      <button class="btn btn-p" onclick="submitInscricao(false)" style="margin-top:12px;padding:13px;font-size:14px" id="btnInsc">Confirmar Inscrição</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ INSCRICAO PRESENCIAL ═══ -->
+<div id="route-presencial" style="display:none">
+  <div style="text-align:center;margin-bottom:20px">
+    <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#0078D4,#001F3F);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;margin:0 auto 12px">C</div>
+    <h1 style="font-size:22px;font-weight:700;margin:0">Inscrição Presencial</h1>
+    <p style="color:var(--t2);margin-top:8px;font-size:13px">Congresso do Batismo</p>
+  </div>
+  <div class="card">
+    <div class="fc">
+      <div class="field"><label class="fl">Nome Completo <span class="req">*</span></label><input class="fi" id="fNomePresc" placeholder="Digite seu nome completo"><div class="fe" id="eNomeP"></div></div>
+      <div class="field"><label class="fl"><span style="display:inline-block;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:9px">WHATSAPP</span></label><input class="fi" id="fWhatsPresc" placeholder="(49) 99999-9999" oninput="this.value=maskPhone(this.value)"><div class="fe" id="eWhatsP"></div></div>
+      <div class="field"><label class="fl">Congregação <span class="req">*</span></label><select class="fs" id="fCongPresc"><option value="">Selecione</option></select><div class="fe" id="eCongP"></div></div>
+      <div class="field"><label class="fl">Setor <span class="req">*</span></label><select class="fs" id="fSetorPresc"><option value="">Selecione</option><option>Visitante</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option></select><div class="fe" id="eSetorP"></div></div>
+      <button class="btn btn-p" onclick="submitInscricao(true)" style="margin-top:12px;padding:13px;font-size:14px" id="btnPresc">Confirmar Inscrição</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CONFIRMACAO ═══ -->
+<div id="route-confirmacao" style="display:none">
+  <div style="text-align:center;margin-bottom:20px">
+    <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#107C10,#005A1F);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;margin:0 auto 12px">✓</div>
+    <h1 style="font-size:22px;font-weight:700;margin:0">Confirmar Presença</h1>
+    <p style="color:var(--t2);margin-top:8px;font-size:13px">Congresso do Batismo</p>
+  </div>
+  <div class="card">
+    <div class="fc">
+      <div class="field"><label class="fl">Buscar por Código ou CPF</label><input class="fi" id="fBuscaConf" placeholder="AB3K7 ou 000.000.000-00" style="text-transform:uppercase" onkeyup="if(event.key==='Enter') buscarParticipante()"><div class="fe" id="eBusca"></div></div>
+      <button class="btn btn-s" onclick="buscarParticipante()" style="padding:13px;font-size:14px">Buscar</button>
+      <button class="btn" onclick="abrirScanner()" style="background:var(--green);color:#fff;padding:13px;font-size:14px">📷 Escanear QR Code</button>
+      <div id="scanner" style="display:none;margin-top:12px"><video id="video" style="width:100%;border-radius:8px"></video></div>
+    </div>
+    <div id="resultConf" style="display:none;margin-top:16px;padding:16px;background:var(--dark);border-radius:8px">
+      <div id="confNome" style="font-size:16px;font-weight:700;margin-bottom:8px"></div>
+      <div id="confDados" style="font-size:12px;color:var(--t2);margin-bottom:12px"></div>
+      <button class="btn btn-p" onclick="confirmarPresenca()" style="padding:12px">Confirmar Presença</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SUCESSO ═══ -->
+<div id="route-sucesso" style="display:none">
+  <div style="text-align:center">
+    <div style="width:60px;height:60px;border-radius:50%;background:var(--green-s);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;color:var(--green)">✓</div>
+    <h2 id="succTitle" style="font-size:20px;font-weight:700;margin-bottom:8px">Registrado com Sucesso!</h2>
+    <div class="card" style="margin-top:16px">
+      <div id="succContent"></div>
+      <button class="btn btn-s" onclick="window.location.href=window.location.pathname" style="margin-top:16px;padding:12px">Voltar</button>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<!-- MODAL ADMIN -->
+<div id="adminModal" class="modal">
+  <div class="modal-box">
+    <span class="close-modal" onclick="closeAdminModal()">&times;</span>
+    <h2 style="margin-bottom:16px;font-size:18px;font-weight:700">Admin — Painel de Controle</h2>
+    <div class="fc">
+      <div class="field"><label class="fl">Senha</label><input class="fi" id="adminPass" type="password" placeholder="Informe a senha"><div class="fe" id="eAdmin"></div></div>
+      <button class="btn btn-p" onclick="loginAdmin()" style="padding:12px">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN DASHBOARD -->
+<div id="route-admin" style="display:none;width:100%;max-width:1200px">
+  <div style="text-align:center;margin-bottom:20px">
+    <h1 style="font-size:24px;font-weight:700">Painel Administrativo</h1>
+    <p style="color:var(--t2);font-size:13px;margin-top:4px">Congresso do Batismo</p>
+    <button class="btn btn-s" onclick="logoutAdmin()" style="margin-top:12px;padding:10px;max-width:200px;margin-left:auto;margin-right:auto">Sair</button>
+  </div>
+
+  <!-- CONTROL SECTION -->
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">Confirmação de Presença</div><div style="font-size:11px;color:var(--t2);margin-top:2px" id="confStatus">Status: Desativada</div></div>
+      <button class="btn" id="btnToggleConf" onclick="toggleConfirmacao()" style="background:var(--green);color:#fff;padding:10px 20px;width:auto">Ativar</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="g2">
+    <div class="stat-card"><div class="stat-label">Total de Inscritos</div><div class="stat-num" id="statTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">Presentes</div><div class="stat-num" id="statPresentes">0</div></div>
+    <div class="stat-card"><div class="stat-label">Pendentes</div><div class="stat-num" id="statPendentes">0</div></div>
+    <div class="stat-card"><div class="stat-label">Taxa de Presença</div><div class="stat-num" id="statTaxa">0%</div></div>
+  </div>
+
+  <!-- TABS -->
+  <div style="margin-top:24px;border-bottom:1px solid var(--border);display:flex;gap:8px">
+    <button class="tab-btn active" onclick="switchTab('stats')">Estatísticas</button>
+    <button class="tab-btn" onclick="switchTab('participantes')">Participantes</button>
+  </div>
+
+  <!-- TAB: STATS -->
+  <div id="tab-stats" class="tab-content active" style="padding:20px 0">
+    <div class="card" style="margin-bottom:20px"><canvas id="chartCongregacao"></canvas></div>
+    <div class="card"><canvas id="chartSetor"></canvas></div>
+  </div>
+
+  <!-- TAB: PARTICIPANTES -->
+  <div id="tab-participantes" class="tab-content" style="padding:20px 0">
+    <div class="card">
+      <div class="fc">
+        <div style="display:flex;gap:8px">
+          <input class="fi" id="searchPart" placeholder="Buscar por nome..." style="flex:1" oninput="filterParticipantes()">
+          <button class="btn btn-s" onclick="exportCSV()" style="width:auto;padding:0 16px">CSV</button>
+        </div>
+        <select class="fs" id="filterStatus" onchange="filterParticipantes()" style="width:100%"><option value="">Todos</option><option value="presente">Presentes</option><option value="pendente">Pendentes</option></select>
+      </div>
+      <div id="participantesLista" style="margin-top:16px;max-height:400px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const CONGS=["Águas de Chapecó","Alvorada","Baronesa","Bela Vista","Belvedere","Boa Vista","Bom Pastor","Cristo Rei","Efapi","Eldorado","Elias Galon","Engenho Braun","Esplanada","Jardim América","Jardim do Lago","Líder 1","Líder 2","Linha Marcon","Mantelli","Marechal Bormann","Maria Goretti","Palmital","Parati","Passo dos Fortes","Pinheirinho","Rosana","Saic","Santa Maria","Santo Antônio","São Cristóvão","São Pedro","Sede","Seminário","Shekinah","Trevo","Universidade","Universitário","Vila Real","Vila Rica","Vitório Rosa"];
+const CC="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+let db,currentRoute="inscricao",adminLogged=false,confirmacaoAtiva=false,participantes=[],charts={};
+
+firebase.initializeApp({
+  apiKey:"AIzaSyBg-3F7xs4PWAIQFp2zBkdKJxoZgX-Dido",
+  authDomain:"gestao-batismo-chapeco.firebaseapp.com",
+  projectId:"gestao-batismo-chapeco",
+  storageBucket:"gestao-batismo-chapeco.firebasestorage.app",
+  messagingSenderId:"452905508964",
+  appId:"1:452905508964:web:639170e360827de18c7f71"
+});
+db=firebase.firestore();
+
+// Load congregations
+[document.getElementById('fCongInsc'),document.getElementById('fCongPresc')].forEach(sel=>{
+  sel.innerHTML='<option value="">Selecione</option>';
+  CONGS.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)});
+});
+
+// Routing
+function setRoute(r){
+  ['inscricao','presencial','confirmacao','sucesso','admin'].forEach(rt=>document.getElementById('route-'+rt).style.display='none');
+  if(r==='presencial') document.getElementById('route-presencial').style.display='';
+  else if(r==='admin'){if(!adminLogged)openAdminModal();else document.getElementById('route-admin').style.display=''}
+  else document.getElementById('route-'+r).style.display='';
+  currentRoute=r;
+}
+
+// Masks & Validation
+function maskPhone(v){const d=v.replace(/\D/g,'').slice(0,11);if(d.length<=2)return d.length?'('+d:'';if(d.length<=7)return'('+d.slice(0,2)+') '+d.slice(2);return'('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7)}
+function genCode(){return Array.from({length:5},()=>CC[Math.floor(Math.random()*CC.length)]).join('')}
+
+// INSCRICAO
+async function submitInscricao(presencial){
+  const fields=presencial?['fNomePresc','fWhatsPresc','fCongPresc','fSetorPresc']:['fNomeInsc','fWhatsInsc','fCongInsc','fSetorInsc'];
+  const errs=presencial?['eNomeP','eWhatsP','eCongP','eSetorP']:['eNome','eWhats','eCong','eSetor'];
+  errs.forEach(e=>document.getElementById(e).textContent='');
+  
+  const n=document.getElementById(fields[0]).value.trim(),w=document.getElementById(fields[1]).value,cg=document.getElementById(fields[2]).value,st=document.getElementById(fields[3]).value;
+  let ok=true;function er(i,m){document.getElementById(errs[i]).textContent=m;ok=false}
+  if(!n)er(0,'Obrigatório');
+  if(!w||w.replace(/\D/g,'').length<11)er(1,'WhatsApp inválido');
+  if(!cg)er(2,'Obrigatório');
+  if(!st)er(3,'Obrigatório');
+  if(!ok)return;
+  
+  try{
+    const cod=genCode(),rec={nome:n,whatsapp:w,congregacao:cg,setor:st,codigo:cod,status:'pendente',presencial,criadoEm:new Date().toISOString()};
+    await db.collection('congresso-inscritos').add(rec);
+    showSucesso(n,cod,presencial);
+  }catch(e){alert('Erro: '+e.message)}
+}
+
+function showSucesso(n,c,p){
+  document.getElementById('succTitle').textContent=p?'Inscrição Presencial Registrada!':'Inscrição Confirmada!';
+  document.getElementById('succContent').innerHTML=`<div style="text-align:center"><div style="font-size:16px;font-weight:700;margin-bottom:12px">${n}</div><div style="font-size:12px;color:var(--t2);margin-bottom:16px">Seu código de acesso</div><div style="font-size:36px;font-weight:800;color:var(--accent);letter-spacing:8px;font-family:'Courier New',monospace;margin-bottom:16px">${c}</div><div id="qrSuc" style="margin:16px auto;display:inline-block"></div></div>`;
+  try{new QRCode(document.getElementById('qrSuc'),{text:c,width:120,height:120,colorDark:'#0078D4',colorLight:'#001F3F',correctLevel:QRCode.CorrectLevel.H})}catch(e){}
+  setRoute('sucesso');
+  window.scrollTo(0,0);
+}
+
+// CONFIRMACAO
+async function buscarParticipante(){
+  const b=document.getElementById('fBuscaConf').value.trim().toUpperCase();
+  if(!b){document.getElementById('eBusca').textContent='Informe código ou CPF';return}
+  try{
+    let q=db.collection('congresso-inscritos');
+    if(b.length===5)q=q.where('codigo','==',b);
+    else q=q.where('whatsapp','==',b.replace(/\D/g,''));
+    const snap=await q.get();
+    if(snap.empty){document.getElementById('eBusca').textContent='Participante não encontrado';return}
+    const p=snap.docs[0].data();
+    p.id=snap.docs[0].id;
+    window.participanteAtual=p;
+    document.getElementById('confNome').textContent=p.nome;
+    document.getElementById('confDados').innerHTML=`<div>Congregação: ${p.congregacao}</div><div>Setor: ${p.setor}</div><div style="margin-top:8px;padding:8px;background:var(--border);border-radius:4px;color:var(--t1)">Status: ${p.status==='presente'?'✓ Presente':'⏳ Pendente'}</div>`;
+    document.getElementById('resultConf').style.display='';
+    document.getElementById('eBusca').textContent='';
+  }catch(e){document.getElementById('eBusca').textContent='Erro na busca'}
+}
+
+async function confirmarPresenca(){
+  if(!window.participanteAtual)return;
+  try{
+    await db.collection('congresso-inscritos').doc(window.participanteAtual.id).update({status:'presente',confirmedoEm:new Date().toISOString()});
+    document.getElementById('succTitle').textContent='Presença Confirmada!';
+    document.getElementById('succContent').innerHTML=`<div style="text-align:center"><div style="font-size:18px;font-weight:700;margin-bottom:8px">${window.participanteAtual.nome}</div><div style="font-size:12px;color:var(--green);margin-top:12px">✓ Presença registrada com sucesso</div></div>`;
+    setRoute('sucesso');
+  }catch(e){alert('Erro: '+e.message)}
+}
+
+// ADMIN
+function openAdminModal(){document.getElementById('adminModal').classList.add('show')}
+function closeAdminModal(){document.getElementById('adminModal').classList.remove('show');document.getElementById('adminPass').value=''}
+function loginAdmin(){
+  const p=document.getElementById('adminPass').value;
+  if(p==='adchapeco2026arfp'){
+    adminLogged=true;closeAdminModal();setRoute('admin');loadAdminData();
+  }else{document.getElementById('eAdmin').textContent='Senha incorreta'}
+}
+function logoutAdmin(){adminLogged=false;setRoute('inscricao')}
+function openAdminModal(){if(!adminLogged)document.getElementById('adminModal').classList.add('show');else setRoute('admin')}
+
+async function loadAdminData(){
+  try{
+    const snap=await db.collection('congresso-inscritos').get();
+    participantes=snap.docs.map(d=>({...d.data(),id:d.id}));
+    const total=participantes.length,presentes=participantes.filter(p=>p.status==='presente').length,pendentes=total-presentes;
+    document.getElementById('statTotal').textContent=total;document.getElementById('statPresentes').textContent=presentes;document.getElementById('statPendentes').textContent=pendentes;
+    document.getElementById('statTaxa').textContent=total>0?Math.round((presentes/total)*100)+'%':'0%';
+    updateCharts();renderParticipantes();
+  }catch(e){}
+}
+
+function updateCharts(){
+  const congData={},setorData={};
+  participantes.forEach(p=>{
+    congData[p.congregacao]=(congData[p.congregacao]||0)+1;
+    setorData[p.setor]=(setorData[p.setor]||0)+1;
+  });
+  
+  if(charts.cong)charts.cong.destroy();
+  charts.cong=new Chart(document.getElementById('chartCongregacao'),{
+    type:'bar',
+    data:{labels:Object.keys(congData),datasets:[{label:'Inscritos',data:Object.values(congData),backgroundColor:'#0078D4'}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#1A5490'}}}}
+  });
+  
+  if(charts.setor)charts.setor.destroy();
+  charts.setor=new Chart(document.getElementById('chartSetor'),{
+    type:'bar',
+    data:{labels:Object.keys(setorData),datasets:[{label:'Participantes',data:Object.values(setorData),backgroundColor:'#107C10'}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#1A5490'}}}}
+  });
+}
+
+function renderParticipantes(){
+  const search=document.getElementById('searchPart').value.toLowerCase(),filter=document.getElementById('filterStatus').value;
+  let list=participantes.filter(p=>(p.nome.toLowerCase().includes(search)|p.congregacao.toLowerCase().includes(search))&&(!filter||p.status===filter));
+  document.getElementById('participantesLista').innerHTML=list.map(p=>`
+    <div style="padding:12px;background:var(--dark);border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
+      <div style="font-weight:700;font-size:13px">${p.nome}</div>
+      <div style="font-size:11px;color:var(--t2);margin-top:4px">${p.congregacao} • ${p.setor}</div>
+      <div style="font-size:11px;color:var(--t2)">${p.codigo}</div>
+      <div style="margin-top:8px;padding:6px 10px;background:${p.status==='presente'?'var(--green-s)':'var(--accent-s)'};border-radius:4px;color:${p.status==='presente'?'var(--green)':'var(--accent)'};font-size:11px;font-weight:700;display:inline-block">${p.status==='presente'?'✓ Presente':'⏳ Pendente'}</div>
+    </div>
+  `).join('');
+}
+
+function filterParticipantes(){renderParticipantes()}
+function switchTab(t){
+  ['stats','participantes'].forEach(tb=>document.getElementById('tab-'+tb).classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function exportCSV(){
+  let csv="Nome,WhatsApp,Congregacao,Setor,Codigo,Status,Data\n";
+  participantes.forEach(p=>csv+=`"${p.nome}","${p.whatsapp}","${p.congregacao}","${p.setor}","${p.codigo}","${p.status}","${p.criadoEm}"\n`);
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);link.download='congresso-participantes.csv';link.click();
+}
+
+function toggleConfirmacao(){
+  confirmacaoAtiva=!confirmacaoAtiva;
+  document.getElementById('confStatus').textContent='Status: '+(confirmacaoAtiva?'Ativa':'Desativada');
+  document.getElementById('btnToggleConf').textContent=confirmacaoAtiva?'Desativar':'Ativar';
+  document.getElementById('btnToggleConf').style.background=confirmacaoAtiva?'var(--red)':'var(--green)';
+}
+
+function abrirScanner(){
+  document.getElementById('scanner').style.display='block';
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(stream=>{
+    document.getElementById('video').srcObject=stream;
+  }).catch(e=>{alert('Erro ao acessar câmera');console.error(e)});
+}
+
+// Initialize
+setRoute('inscricao');
+</script>
+</body>
+</html>
