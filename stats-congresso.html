@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stats — Congresso do Discipulado</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #001F3F 0%, #0A2851 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      font-size: 42px;
+      margin-bottom: 8px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    .header p {
+      font-size: 18px;
+      color: #0078D4;
+      font-weight: 600;
+    }
+    .last-update {
+      font-size: 12px;
+      color: #888;
+      margin-top: 12px;
+      font-style: italic;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: rgba(15, 58, 102, 0.8);
+      border: 2px solid #0078D4;
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+    .stat-card.total {
+      border-color: #0078D4;
+      background: rgba(0, 120, 212, 0.15);
+    }
+    .stat-card.present {
+      border-color: #107C10;
+      background: rgba(16, 124, 16, 0.15);
+    }
+    .stat-card.pending {
+      border-color: #FFB900;
+      background: rgba(255, 185, 0, 0.15);
+    }
+    .stat-value {
+      font-size: 56px;
+      font-weight: 900;
+      margin: 15px 0;
+      letter-spacing: 2px;
+    }
+    .stat-card.total .stat-value { color: #0078D4; }
+    .stat-card.present .stat-value { color: #107C10; }
+    .stat-card.pending .stat-value { color: #FFB900; }
+    .stat-label {
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ccc;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+    .chart-container {
+      background: rgba(15, 58, 102, 0.8);
+      border: 1px solid #0078D4;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+      height: 400px;
+    }
+    .chart-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #0078D4;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    canvas {
+      max-height: 320px;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 18px;
+      color: #0078D4;
+    }
+    .error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 2px solid #EF4444;
+      color: #FCA5A5;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      font-size: 16px;
+    }
+    @media (max-width: 768px) {
+      .header h1 { font-size: 28px; }
+      .stat-value { font-size: 36px; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-container { height: 350px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CONGRESSO DO DISCIPULADO</h1>
+      <p>📊 ESTATÍSTICAS EM TEMPO REAL</p>
+      <div class="last-update">Atualiza a cada 30 segundos</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-label">Total de Inscritos</div>
+        <div class="stat-value" id="totalStat">0</div>
+      </div>
+      <div class="stat-card present">
+        <div class="stat-label">Presentes</div>
+        <div class="stat-value" id="presentStat">0</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="stat-label">Pendentes</div>
+        <div class="stat-value" id="pendingStat">0</div>
+      </div>
+    </div>
+
+    <div id="errorMsg"></div>
+
+    <div class="charts-grid">
+      <div class="chart-container">
+        <div class="chart-title">Inscritos por Setor</div>
+        <canvas id="setorChart"></canvas>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">Inscritos por Congregação</div>
+        <canvas id="congChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBg-3F7xs4PWAIQFp2zBkdKJxoZgX-Dido",
+      authDomain: "gestao-batismo-chapeco.firebaseapp.com",
+      projectId: "gestao-batismo-chapeco",
+      storageBucket: "gestao-batismo-chapeco.firebasestorage.app",
+      messagingSenderId: "452905508964",
+      appId: "1:452905508964:web:639170e360827de18c7f71"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let setorCtx = document.getElementById('setorChart').getContext('2d');
+    let congCtx = document.getElementById('congChart').getContext('2d');
+    let setorChart = null;
+    let congChart = null;
+
+    async function loadData() {
+      try {
+        const snap = await db.collection('congresso-inscritos').get();
+        const data = snap.docs.map(d => d.data());
+
+        // Stats
+        const total = data.length;
+        const present = data.filter(d => d.confirmedoEm).length;
+        const pending = total - present;
+
+        document.getElementById('totalStat').textContent = total;
+        document.getElementById('presentStat').textContent = present;
+        document.getElementById('pendingStat').textContent = pending;
+
+        // Setor chart
+        const setorMap = {};
+        data.forEach(d => {
+          const setor = d.setor || 'N/A';
+          setorMap[setor] = (setorMap[setor] || 0) + 1;
+        });
+        const setorLabels = Object.keys(setorMap).sort();
+        const setorValues = setorLabels.map(l => setorMap[l]);
+
+        if (setorChart) setorChart.destroy();
+        setorChart = new Chart(setorCtx, {
+          type: 'bar',
+          data: {
+            labels: setorLabels,
+            datasets: [{
+              label: 'Inscritos',
+              data: setorValues,
+              backgroundColor: 'rgba(0, 120, 212, 0.7)',
+              borderColor: '#0078D4',
+              borderWidth: 2,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx) => ctx.parsed.x + ' inscritos' } }
+            },
+            scales: {
+              x: { 
+                grid: { color: 'rgba(255,255,255,0.1)' },
+                ticks: { color: '#aaa' },
+                beginAtZero: true
+              },
+              y: { 
+                grid: { display: false },
+                ticks: { color: '#aaa' }
+              }
+            }
+          }
+        });
+
+        // Congregation chart
+        const congMap = {};
+        data.forEach(d => {
+          const cong = d.congregacao || 'N/A';
+          congMap[cong] = (congMap[cong] || 0) + 1;
+        });
+        const congLabels = Object.keys(congMap).sort((a,b) => congMap[b] - congMap[a]).slice(0, 15);
+        const congValues = congLabels.map(l => congMap[l]);
+
+        if (congChart) congChart.destroy();
+        congChart = new Chart(congCtx, {
+          type: 'doughnut',
+          data: {
+            labels: congLabels,
+            datasets: [{
+              data: congValues,
+              backgroundColor: [
+                'rgba(0, 120, 212, 0.8)',
+                'rgba(16, 124, 16, 0.8)',
+                'rgba(255, 185, 0, 0.8)',
+                'rgba(139, 92, 246, 0.8)',
+                'rgba(6, 182, 212, 0.8)',
+                'rgba(236, 72, 153, 0.8)',
+                'rgba(249, 115, 22, 0.8)',
+                'rgba(34, 197, 94, 0.8)',
+                'rgba(59, 130, 246, 0.8)',
+                'rgba(168, 85, 247, 0.8)',
+                'rgba(14, 165, 233, 0.8)',
+                'rgba(244, 63, 94, 0.8)',
+                'rgba(132, 204, 22, 0.8)',
+                'rgba(251, 146, 60, 0.8)',
+                'rgba(96, 165, 250, 0.8)'
+              ],
+              borderColor: '#001F3F',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { 
+                position: 'right',
+                labels: { color: '#aaa', padding: 15, font: { size: 12 } }
+              },
+              tooltip: { callbacks: { label: (ctx) => ctx.label + ': ' + ctx.parsed + ' inscritos' } }
+            }
+          }
+        });
+
+        document.getElementById('errorMsg').innerHTML = '';
+      } catch (error) {
+        console.error('Erro:', error);
+        document.getElementById('errorMsg').innerHTML = `<div class="error">⚠️ Erro ao carregar dados: ${error.message}</div>`;
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 30000); // Refresh a cada 30 segundos
+  </script>
+</body>
+</html>
