@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stats — Gestão Batismo</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -110,21 +108,6 @@
     canvas {
       max-height: 320px;
     }
-    .loading {
-      text-align: center;
-      padding: 40px;
-      font-size: 18px;
-      color: #0078D4;
-    }
-    .error {
-      background: rgba(239, 68, 68, 0.15);
-      border: 2px solid #EF4444;
-      color: #FCA5A5;
-      padding: 20px;
-      border-radius: 8px;
-      margin: 20px 0;
-      font-size: 16px;
-    }
     @media (max-width: 768px) {
       .header h1 { font-size: 28px; }
       .stat-value { font-size: 36px; }
@@ -171,17 +154,10 @@
   </div>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBg-3F7xs4PWAIQFp2zBkdKJxoZgX-Dido",
-      authDomain: "gestao-batismo-chapeco.firebaseapp.com",
-      projectId: "gestao-batismo-chapeco",
-      storageBucket: "gestao-batismo-chapeco.firebasestorage.app",
-      messagingSenderId: "452905508964",
-      appId: "1:452905508964:web:639170e360827de18c7f71"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    const PROJECT_ID = "gestao-batismo-chapeco";
+    const DATABASE = "(default)";
+    const COLLECTION = "candidatos";
+    const API_KEY = "AIzaSyBg-3F7xs4PWAIQFp2zBkdKJxoZgX-Dido";
 
     let setorCtx = document.getElementById('setorChart').getContext('2d');
     let congCtx = document.getElementById('congChart').getContext('2d');
@@ -190,8 +166,38 @@
 
     async function loadData() {
       try {
-        const snap = await db.collection('candidatos').get();
-        const data = snap.docs.map(d => d.data());
+        let docs = [];
+        let pageToken = null;
+        
+        // Fetch all documents with pagination
+        do {
+          let url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE}/documents/${COLLECTION}?key=${API_KEY}&pageSize=1000`;
+          if (pageToken) {
+            url += `&pageToken=${encodeURIComponent(pageToken)}`;
+          }
+          
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const result = await response.json();
+          docs = docs.concat(result.documents || []);
+          pageToken = result.nextPageToken || null;
+        } while (pageToken);
+
+        // Parse documents
+        const data = docs.map(doc => {
+          const fields = doc.fields || {};
+          return {
+            nome: fields.nome?.stringValue || '',
+            congregacao: fields.congregacao?.stringValue || 'N/A',
+            setor: fields.setor?.stringValue || 'N/A',
+            status: fields.status?.stringValue || 'pendente',
+            confirmedoEm: fields.confirmedoEm?.stringValue || null
+          };
+        });
 
         // Stats
         const total = data.length;
@@ -300,12 +306,12 @@
         document.getElementById('errorMsg').innerHTML = '';
       } catch (error) {
         console.error('Erro:', error);
-        document.getElementById('errorMsg').innerHTML = `<div class="error">⚠️ Erro ao carregar dados: ${error.message}</div>`;
+        document.getElementById('errorMsg').innerHTML = `<div class="error">⚠️ Erro: ${error.message}</div>`;
       }
     }
 
     loadData();
-    setInterval(loadData, 30000); // Refresh a cada 30 segundos
+    setInterval(loadData, 30000);
   </script>
 </body>
 </html>
