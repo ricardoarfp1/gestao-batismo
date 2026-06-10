@@ -195,7 +195,7 @@
 
         // Stats
         const total = data.length;
-        const present = data.filter(d => d.confirmedoEm).length;
+        const present = data.filter(d => d.status === "confirmado").length;
         const pending = total - present;
 
         document.getElementById('totalStat').textContent = total;
