@@ -166,16 +166,26 @@
 
     async function loadData() {
       try {
-        const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE}/documents/${COLLECTION}?key=${API_KEY}`;
+        let docs = [];
+        let pageToken = null;
         
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        // Fetch all documents with pagination
+        do {
+          let url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE}/documents/${COLLECTION}?key=${API_KEY}&pageSize=1000`;
+          if (pageToken) {
+            url += `&pageToken=${encodeURIComponent(pageToken)}`;
+          }
+          
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
 
-        const result = await response.json();
-        const docs = result.documents || [];
+          const result = await response.json();
+          docs = docs.concat(result.documents || []);
+          pageToken = result.nextPageToken || null;
+        } while (pageToken);
 
         // Parse documents
         const data = docs.map(doc => {
